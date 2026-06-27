@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  scaffold:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate workflow YAML
+        run: ruby -e "require 'yaml'; YAML.load_file('.github/workflows/ci.yml')"
+      - name: Validate required scaffold files
+        run: |
+          test -f README.md
+          test -f LICENSE
+          test -f PRIVACY.md
+          test -f SECURITY.md
+          test -f CONTRIBUTING.md
+          test -f CODEOWNERS
+          test -f project.yml
+          test -f Docs/architecture.md
+          test -f Docs/review-checklist.md
+          test -f Docs/manual-validation.md
+          test -f Docs/adr/ADR-0001-modern-quicklook-extension.md
+          test -f Docs/adr/ADR-0002-markdown-engine.md
+          test -f Docs/adr/ADR-0003-security-model.md
+      - name: Validate plists and entitlements
+        run: |
+          plutil -lint PreviewExtension/Info.plist
+          plutil -lint PreviewExtension/PreviewExtension.entitlements
+          plutil -lint ThumbnailExtension/Info.plist
+          plutil -lint ThumbnailExtension/ThumbnailExtension.entitlements
+          /usr/libexec/PlistBuddy -c 'Print :NSExtension:NSExtensionAttributes:QLSupportedContentTypes' PreviewExtension/Info.plist >/tmp/preview-types.txt
+          /usr/libexec/PlistBuddy -c 'Print :NSExtension:NSExtensionAttributes:QLSupportedContentTypes' ThumbnailExtension/Info.plist >/tmp/thumb-types.txt
+          grep -q 'io.typora.markdown' /tmp/preview-types.txt
+          grep -q 'com.rstudio.rmarkdown' /tmp/preview-types.txt
+          grep -q 'org.quarto.qmarkdown' /tmp/preview-types.txt
+          grep -q 'io.typora.markdown' /tmp/thumb-types.txt
+          grep -q 'com.rstudio.rmarkdown' /tmp/thumb-types.txt
+          grep -q 'org.quarto.qmarkdown' /tmp/thumb-types.txt
+          ! grep -q 'public.plain-text' /tmp/preview-types.txt
+          ! grep -q 'public.plain-text' /tmp/thumb-types.txt
+          diff /tmp/preview-types.txt /tmp/thumb-types.txt
+      - name: Validate shell scripts
+        run: |
+          sh -n Scripts/bootstrap.sh
+          sh -n Scripts/reset-quicklook.sh
+          sh -n Scripts/diagnose-file.sh
+          sh -n Scripts/package-debug.sh
+      - name: Check whitespace
+        run: git diff --check
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Validate XcodeGen spec syntax
+        run: xcodegen dump --spec project.yml >/tmp/marklook-project-dump.yml
+      - name: Test MarkdownCore placeholder package
+        run: |
+          cd Packages/MarkdownCore
+          swift test
