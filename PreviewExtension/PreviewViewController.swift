@@ -2,34 +2,25 @@ import Cocoa
 import Quartz
 
 final class PreviewViewController: NSViewController, @preconcurrency QLPreviewingController {
+    private let pipeline = MarkdownPreviewPipeline()
+
     override func loadView() {
-        view = PreviewHTMLView(
-            fileName: "MarkLook Preview Extension Loaded",
-            filePath: "Waiting for a Quick Look file.",
-            detail: "Rendering is implemented in Issue #4."
-        )
+        view = NSView()
     }
 
     func preparePreviewOfFile(at url: URL, completionHandler handler: @escaping (Error?) -> Void) {
-        do {
-            let values = try url.resourceValues(forKeys: [.fileSizeKey])
-            let sizeText = values.fileSize.map(Self.formattedByteCount) ?? "Unknown size"
-            view = PreviewHTMLView(
-                fileName: url.lastPathComponent,
-                filePath: url.path,
-                detail: "MarkLook Preview Extension Loaded\n\(sizeText)\nRendering is implemented in Issue #4."
-            )
+        switch pipeline.preview(for: url) {
+        case let .webHTML(html):
+            view = MarkdownPreviewWebView(html: html)
             handler(nil)
-        } catch {
+        case let .error(title, message):
             view = PreviewErrorView(
-                title: "Preview unavailable",
-                message: error.localizedDescription
+                title: title,
+                message: message
             )
-            handler(error)
+            // Return nil after installing PreviewErrorView so Quick Look displays the local error UI
+            // instead of falling back to another provider or showing a blank panel.
+            handler(nil)
         }
-    }
-
-    private static func formattedByteCount(_ byteCount: Int) -> String {
-        ByteCountFormatter.string(fromByteCount: Int64(byteCount), countStyle: .file)
     }
 }
