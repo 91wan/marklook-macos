@@ -30,4 +30,35 @@ final class MarkdownPreviewRenderingTests: XCTestCase {
         XCTAssertEqual(result.sourceByteCount, 1_000_001)
         XCTAssertLessThan(result.html.utf8.count, source.utf8.count)
     }
+
+    func testLoaderAndRendererTogetherUseFastModeForLargeFile() throws {
+        let options = RenderOptions(
+            includeTableOfContents: true,
+            fastModeByteThreshold: 64,
+            fastModePreviewByteLimit: 32
+        )
+        let loader = MarkdownPreviewLoader(options: options)
+        let renderer = MarkdownPreviewRenderer(options: options)
+        let bytes = Array("# Heading\n\nPrefix body\n\n".utf8)
+            + Array(repeating: UInt8(ascii: "x"), count: 80)
+            + Array("\nTAIL_SHOULD_NOT_RENDER".utf8)
+        let url = try writeTempFile(named: "large-render.md", bytes: bytes)
+
+        let document = try loader.loadDocument(from: url)
+        let result = try renderer.render(document)
+
+        XCTAssertTrue(result.usedFastMode)
+        XCTAssertEqual(result.sourceByteCount, bytes.count)
+        XCTAssertFalse(result.html.contains("TAIL_SHOULD_NOT_RENDER"))
+        XCTAssertTrue(result.html.contains("Fast mode: document truncated for Quick Look responsiveness."))
+    }
+
+    private func writeTempFile(named name: String, bytes: [UInt8]) throws -> URL {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent(name)
+        try Data(bytes).write(to: url)
+        return url
+    }
 }

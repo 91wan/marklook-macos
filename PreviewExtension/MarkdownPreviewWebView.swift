@@ -64,7 +64,7 @@ enum PreviewNavigationPolicy {
             return .allow
         }
 
-        if requestURL.scheme?.lowercased() == "about" {
+        if requestURL.absoluteString.lowercased() == "about:blank" {
             return .allow
         }
 

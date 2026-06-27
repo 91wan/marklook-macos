@@ -105,3 +105,4 @@ jobs:
           git grep -n "import WebKit" -- PreviewExtension
           ! git grep -n "allowRawHTML" -- MarkLookApp PreviewExtension ThumbnailExtension Shared Packages/MarkdownCore Scripts project.yml
           ! git grep -n "allowRemoteResources" -- MarkLookApp PreviewExtension ThumbnailExtension Shared Packages/MarkdownCore Scripts project.yml
+          ! git grep -n "Data(contentsOf:" -- PreviewExtension

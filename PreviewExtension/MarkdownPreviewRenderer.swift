@@ -1,16 +1,20 @@
 import MarkdownCore
 
+enum PreviewRenderDefaults {
+    static let options = RenderOptions(
+        includeTableOfContents: true,
+        fastModeByteThreshold: 1_000_000,
+        fastModePreviewByteLimit: 80_000
+    )
+}
+
 struct MarkdownPreviewRenderer {
     private let renderer: MarkdownRendering
     private let options: RenderOptions
 
     init(
         renderer: MarkdownRendering = MarkdownRenderer(),
-        options: RenderOptions = RenderOptions(
-            includeTableOfContents: true,
-            fastModeByteThreshold: 1_000_000,
-            fastModePreviewByteLimit: 80_000
-        )
+        options: RenderOptions = PreviewRenderDefaults.options
     ) {
         self.renderer = renderer
         self.options = options
