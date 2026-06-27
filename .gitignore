@@ -1,0 +1,11 @@
+.DS_Store
+.build/
+DerivedData/
+MarkLook.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+*.xcuserstate
+*.swp
+*.tmp
+/.worktrees/
+/worktrees/

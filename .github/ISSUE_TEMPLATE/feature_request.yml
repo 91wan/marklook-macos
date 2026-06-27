@@ -1,0 +1,27 @@
+name: Feature request
+description: Propose a scoped MarkLook improvement.
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What Quick Look Markdown workflow should this improve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Keep proposals within the MarkLook product boundary.
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This is not a Markdown editor feature.
+        - label: This does not require network access during preview rendering.
+        - label: This does not require deprecated `.qlgenerator` support.

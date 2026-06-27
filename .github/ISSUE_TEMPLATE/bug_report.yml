@@ -1,0 +1,34 @@
+name: Bug report
+description: Report a MarkLook bug.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include sample file details when possible.
+      placeholder: |
+        1. Select a Markdown file in Finder.
+        2. Press Space.
+        3. Observe...
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Diagnostics
+      description: Paste mdls, pluginkit, or qlmanage output if relevant.

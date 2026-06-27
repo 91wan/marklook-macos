@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  scaffold:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate workflow YAML
+        run: ruby -e "require 'yaml'; YAML.load_file('.github/workflows/ci.yml')"
+      - name: Validate required scaffold files
+        run: |
+          test -f README.md
+          test -f LICENSE
+          test -f PRIVACY.md
+          test -f SECURITY.md
+          test -f CONTRIBUTING.md
+          test -f CODEOWNERS
+          test -f project.yml
+          test -f Docs/architecture.md
+          test -f Docs/review-checklist.md
+          test -f Docs/manual-validation.md
+          test -f Docs/adr/ADR-0001-modern-quicklook-extension.md
+          test -f Docs/adr/ADR-0002-markdown-engine.md
+          test -f Docs/adr/ADR-0003-security-model.md
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Validate XcodeGen spec syntax
+        run: xcodegen dump --spec project.yml >/tmp/marklook-project-dump.yml
+      - name: Test MarkdownCore placeholder package
+        run: |
+          cd Packages/MarkdownCore
+          swift test
