@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 jobs:
-  scaffold:
+  build:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,35 +27,57 @@ jobs:
           test -f Docs/adr/ADR-0001-modern-quicklook-extension.md
           test -f Docs/adr/ADR-0002-markdown-engine.md
           test -f Docs/adr/ADR-0003-security-model.md
+          test -f MarkLookApp/Info.plist
+          test -f MarkLookApp/MarkLook.entitlements
+          test -f Scripts/validate-supported-types.sh
+          test -f Scripts/validate-built-bundle.sh
       - name: Validate plists and entitlements
         run: |
+          plutil -lint MarkLookApp/Info.plist
+          plutil -lint MarkLookApp/MarkLook.entitlements
           plutil -lint PreviewExtension/Info.plist
           plutil -lint PreviewExtension/PreviewExtension.entitlements
           plutil -lint ThumbnailExtension/Info.plist
           plutil -lint ThumbnailExtension/ThumbnailExtension.entitlements
-          /usr/libexec/PlistBuddy -c 'Print :NSExtension:NSExtensionAttributes:QLSupportedContentTypes' PreviewExtension/Info.plist >/tmp/preview-types.txt
-          /usr/libexec/PlistBuddy -c 'Print :NSExtension:NSExtensionAttributes:QLSupportedContentTypes' ThumbnailExtension/Info.plist >/tmp/thumb-types.txt
-          grep -q 'io.typora.markdown' /tmp/preview-types.txt
-          grep -q 'com.rstudio.rmarkdown' /tmp/preview-types.txt
-          grep -q 'org.quarto.qmarkdown' /tmp/preview-types.txt
-          grep -q 'io.typora.markdown' /tmp/thumb-types.txt
-          grep -q 'com.rstudio.rmarkdown' /tmp/thumb-types.txt
-          grep -q 'org.quarto.qmarkdown' /tmp/thumb-types.txt
-          ! grep -q 'public.plain-text' /tmp/preview-types.txt
-          ! grep -q 'public.plain-text' /tmp/thumb-types.txt
-          diff /tmp/preview-types.txt /tmp/thumb-types.txt
+          /usr/libexec/PlistBuddy -c 'Print :com.apple.security.app-sandbox' MarkLookApp/MarkLook.entitlements | grep -q true
+          /usr/libexec/PlistBuddy -c 'Print :com.apple.security.app-sandbox' PreviewExtension/PreviewExtension.entitlements | grep -q true
+          /usr/libexec/PlistBuddy -c 'Print :com.apple.security.app-sandbox' ThumbnailExtension/ThumbnailExtension.entitlements | grep -q true
+          Scripts/validate-supported-types.sh
+          ! grep -R "com.apple.security.network.client" . --include="*.entitlements"
+          ! grep -R "public.plain-text" PreviewExtension ThumbnailExtension
       - name: Validate shell scripts
         run: |
           sh -n Scripts/bootstrap.sh
           sh -n Scripts/reset-quicklook.sh
           sh -n Scripts/diagnose-file.sh
           sh -n Scripts/package-debug.sh
+          sh -n Scripts/validate-supported-types.sh
+          sh -n Scripts/validate-built-bundle.sh
       - name: Check whitespace
         run: git diff --check
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Validate XcodeGen spec syntax
         run: xcodegen dump --spec project.yml >/tmp/marklook-project-dump.yml
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: List Xcode project
+        run: xcodebuild -project MarkLook.xcodeproj -list
+      - name: Build MarkLook
+        run: |
+          xcodebuild \
+            -project MarkLook.xcodeproj \
+            -scheme MarkLook \
+            -configuration Debug \
+            -derivedDataPath .build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+      - name: Validate build products
+        run: |
+          test -d .build/DerivedData/Build/Products/Debug/MarkLook.app
+          test -d .build/DerivedData/Build/Products/Debug/MarkLook.app/Contents/PlugIns/MarkLookPreview.appex
+          test -d .build/DerivedData/Build/Products/Debug/MarkLook.app/Contents/PlugIns/MarkLookThumbnail.appex
+          Scripts/validate-built-bundle.sh .build/DerivedData/Build/Products/Debug/MarkLook.app
       - name: Test MarkdownCore placeholder package
         run: |
           cd Packages/MarkdownCore
