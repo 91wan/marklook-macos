@@ -1,1 +1,511 @@
-// Placeholder for Issue #3.
+import Foundation
+
+public struct RenderOptions: Equatable, Sendable {
+    public let allowRawHTML: Bool
+    public let allowRemoteResources: Bool
+    public let includeTableOfContents: Bool
+    public let fastModeByteThreshold: Int
+
+    public init(
+        allowRawHTML: Bool = false,
+        allowRemoteResources: Bool = false,
+        includeTableOfContents: Bool = true,
+        fastModeByteThreshold: Int = 1_000_000
+    ) {
+        self.allowRawHTML = allowRawHTML
+        self.allowRemoteResources = allowRemoteResources
+        self.includeTableOfContents = includeTableOfContents
+        self.fastModeByteThreshold = fastModeByteThreshold
+    }
+}
+
+public struct RenderResult: Equatable, Sendable {
+    public let html: String
+    public let tableOfContents: [TableOfContents.Item]
+    public let frontMatter: FrontMatter?
+    public let diagnostics: [RenderDiagnostic]
+    public let usedFastMode: Bool
+    public let sourceByteCount: Int
+
+    public init(
+        html: String,
+        tableOfContents: [TableOfContents.Item],
+        frontMatter: FrontMatter?,
+        diagnostics: [RenderDiagnostic],
+        usedFastMode: Bool,
+        sourceByteCount: Int
+    ) {
+        self.html = html
+        self.tableOfContents = tableOfContents
+        self.frontMatter = frontMatter
+        self.diagnostics = diagnostics
+        self.usedFastMode = usedFastMode
+        self.sourceByteCount = sourceByteCount
+    }
+}
+
+public protocol MarkdownRendering {
+    func render(_ document: MarkdownDocument, options: RenderOptions) throws -> RenderResult
+}
+
+public extension MarkdownRendering {
+    func render(_ document: MarkdownDocument) throws -> RenderResult {
+        try render(document, options: RenderOptions())
+    }
+}
+
+public struct MarkdownRenderer: MarkdownRendering, Sendable {
+    private let builder: HTMLDocumentBuilder
+
+    public init(builder: HTMLDocumentBuilder = HTMLDocumentBuilder()) {
+        self.builder = builder
+    }
+
+    public func render(_ document: MarkdownDocument, options: RenderOptions = RenderOptions()) throws -> RenderResult {
+        var renderer = BlockRenderer(options: options)
+        let bodyHTML = renderer.render(document.source)
+        let title = document.frontMatter?.fields["title"] ?? renderer.tableOfContents.first?.title ?? "MarkLook"
+        let usedFastMode = document.sourceByteCount > options.fastModeByteThreshold
+
+        if usedFastMode {
+            renderer.diagnostics.append(RenderDiagnostic(kind: .fastMode, message: "Document exceeded fast mode threshold."))
+        }
+
+        return RenderResult(
+            html: builder.build(title: title, bodyHTML: bodyHTML),
+            tableOfContents: renderer.tableOfContents,
+            frontMatter: document.frontMatter,
+            diagnostics: renderer.diagnostics,
+            usedFastMode: usedFastMode,
+            sourceByteCount: document.sourceByteCount
+        )
+    }
+}
+
+private struct BlockRenderer {
+    let options: RenderOptions
+    var diagnostics: [RenderDiagnostic] = []
+    var tableOfContents: [TableOfContents.Item] = []
+
+    private var slugCounts: [String: Int] = [:]
+
+    init(options: RenderOptions) {
+        self.options = options
+    }
+
+    mutating func render(_ source: String) -> String {
+        let normalizedSource = source.replacingOccurrences(of: "\r\n", with: "\n")
+        let lines = normalizedSource.components(separatedBy: "\n")
+        var blocks: [String] = []
+        var index = 0
+
+        while index < lines.count {
+            if lines[index].trimmingCharacters(in: .whitespaces).isEmpty {
+                index += 1
+                continue
+            }
+
+            if isFenceStart(lines[index]) {
+                let rendered = renderFencedCode(lines: lines, startIndex: index)
+                blocks.append(rendered.html)
+                index = rendered.nextIndex
+                continue
+            }
+
+            if let table = renderTable(lines: lines, startIndex: index) {
+                blocks.append(table.html)
+                index = table.nextIndex
+                continue
+            }
+
+            if let heading = parseHeading(lines[index]) {
+                blocks.append(renderHeading(heading))
+                index += 1
+                continue
+            }
+
+            if isHorizontalRule(lines[index]) {
+                blocks.append("<hr>")
+                index += 1
+                continue
+            }
+
+            if isBlockquote(lines[index]) {
+                let rendered = renderBlockquote(lines: lines, startIndex: index)
+                blocks.append(rendered.html)
+                index = rendered.nextIndex
+                continue
+            }
+
+            if parseUnorderedListItem(lines[index]) != nil {
+                let rendered = renderList(lines: lines, startIndex: index, ordered: false)
+                blocks.append(rendered.html)
+                index = rendered.nextIndex
+                continue
+            }
+
+            if parseOrderedListItem(lines[index]) != nil {
+                let rendered = renderList(lines: lines, startIndex: index, ordered: true)
+                blocks.append(rendered.html)
+                index = rendered.nextIndex
+                continue
+            }
+
+            let rendered = renderParagraph(lines: lines, startIndex: index)
+            blocks.append(rendered.html)
+            index = rendered.nextIndex
+        }
+
+        return blocks.joined(separator: "\n")
+    }
+
+    private mutating func renderHeading(_ heading: (level: Int, title: String)) -> String {
+        let id = TableOfContents.uniqueSlug(for: heading.title, counts: &slugCounts)
+        if options.includeTableOfContents, heading.level <= 3 {
+            tableOfContents.append(TableOfContents.Item(title: heading.title, level: heading.level, id: id))
+        }
+
+        return "<h\(heading.level) id=\"\(ResourcePolicy.escapeAttribute(id))\">\(renderInline(heading.title))</h\(heading.level)>"
+    }
+
+    private mutating func renderFencedCode(lines: [String], startIndex: Int) -> (html: String, nextIndex: Int) {
+        let opening = lines[startIndex].trimmingCharacters(in: .whitespaces)
+        let info = String(opening.dropFirst(3)).trimmingCharacters(in: .whitespaces)
+        var codeLines: [String] = []
+        var index = startIndex + 1
+
+        while index < lines.count {
+            if isFenceStart(lines[index]) {
+                index += 1
+                break
+            }
+
+            codeLines.append(lines[index])
+            index += 1
+        }
+
+        let languageClass = sanitizedLanguageClass(info)
+        let classAttribute = languageClass.isEmpty ? "" : " class=\"language-\(languageClass)\""
+        return ("<pre><code\(classAttribute)>\(ResourcePolicy.escapeHTML(codeLines.joined(separator: "\n")))</code></pre>", index)
+    }
+
+    private mutating func renderTable(lines: [String], startIndex: Int) -> (html: String, nextIndex: Int)? {
+        guard startIndex + 1 < lines.count,
+              let headers = parseTableRow(lines[startIndex]),
+              let separator = parseTableRow(lines[startIndex + 1]),
+              isTableSeparator(separator) else {
+            return nil
+        }
+
+        var rows: [[String]] = []
+        var index = startIndex + 2
+
+        while index < lines.count, let row = parseTableRow(lines[index]) {
+            rows.append(row)
+            index += 1
+        }
+
+        let headerHTML = headers
+            .map { "<th>\(renderInline($0))</th>" }
+            .joined()
+        let bodyHTML = rows
+            .map { row in
+                let cells = row.map { "<td>\(renderInline($0))</td>" }.joined()
+                return "<tr>\(cells)</tr>"
+            }
+            .joined(separator: "\n")
+
+        return (
+            """
+            <table>
+            <thead><tr>\(headerHTML)</tr></thead>
+            <tbody>
+            \(bodyHTML)
+            </tbody>
+            </table>
+            """,
+            index
+        )
+    }
+
+    private mutating func renderBlockquote(lines: [String], startIndex: Int) -> (html: String, nextIndex: Int) {
+        var parts: [String] = []
+        var index = startIndex
+
+        while index < lines.count, isBlockquote(lines[index]) {
+            var line = lines[index].trimmingCharacters(in: .whitespaces)
+            line.removeFirst()
+            if line.first == " " {
+                line.removeFirst()
+            }
+            parts.append(line)
+            index += 1
+        }
+
+        return ("<blockquote>\n<p>\(renderInline(parts.joined(separator: " ")))</p>\n</blockquote>", index)
+    }
+
+    private mutating func renderList(lines: [String], startIndex: Int, ordered: Bool) -> (html: String, nextIndex: Int) {
+        var items: [String] = []
+        var index = startIndex
+
+        while index < lines.count {
+            let content = ordered ? parseOrderedListItem(lines[index]) : parseUnorderedListItem(lines[index])
+            guard let content else {
+                break
+            }
+
+            items.append("<li>\(renderListItemContent(content))</li>")
+            index += 1
+        }
+
+        let tag = ordered ? "ol" : "ul"
+        return ("<\(tag)>\n\(items.joined(separator: "\n"))\n</\(tag)>", index)
+    }
+
+    private mutating func renderListItemContent(_ content: String) -> String {
+        let trimmed = content.trimmingCharacters(in: .whitespaces)
+
+        if trimmed.hasPrefix("[x] ") || trimmed.hasPrefix("[X] ") {
+            let task = String(trimmed.dropFirst(4))
+            return "<input type=\"checkbox\" checked disabled> \(renderInline(task))"
+        }
+
+        if trimmed.hasPrefix("[ ] ") {
+            let task = String(trimmed.dropFirst(4))
+            return "<input type=\"checkbox\" disabled> \(renderInline(task))"
+        }
+
+        return renderInline(content)
+    }
+
+    private mutating func renderParagraph(lines: [String], startIndex: Int) -> (html: String, nextIndex: Int) {
+        var parts: [String] = []
+        var index = startIndex
+
+        while index < lines.count {
+            let line = lines[index]
+            if line.trimmingCharacters(in: .whitespaces).isEmpty {
+                break
+            }
+
+            if !parts.isEmpty, startsBlock(line, lines: lines, index: index) {
+                break
+            }
+
+            parts.append(line.trimmingCharacters(in: .whitespaces))
+            index += 1
+        }
+
+        return ("<p>\(renderInline(parts.joined(separator: " ")))</p>", index)
+    }
+
+    private mutating func renderInline(_ text: String) -> String {
+        let policy = ResourcePolicy(options: options)
+        var output = ""
+        var buffer = ""
+        var cursor = text.startIndex
+
+        func flushBuffer() {
+            guard !buffer.isEmpty else {
+                return
+            }
+            output += policy.sanitizeText(buffer, diagnostics: &diagnostics)
+            buffer.removeAll(keepingCapacity: true)
+        }
+
+        while cursor < text.endIndex {
+            if text[cursor] == "`",
+               let closing = text[text.index(after: cursor)...].firstIndex(of: "`") {
+                flushBuffer()
+                let codeStart = text.index(after: cursor)
+                output += "<code>\(ResourcePolicy.escapeHTML(String(text[codeStart..<closing])))</code>"
+                cursor = text.index(after: closing)
+                continue
+            }
+
+            if text[cursor] == "!",
+               let image = parseImage(in: text, at: cursor) {
+                flushBuffer()
+                output += policy.renderImage(alt: image.alt, url: image.url, diagnostics: &diagnostics)
+                cursor = image.nextIndex
+                continue
+            }
+
+            if text[cursor] == "[",
+               let link = parseLink(in: text, at: cursor) {
+                flushBuffer()
+                let labelHTML = policy.sanitizeText(link.label, diagnostics: &diagnostics)
+                output += policy.renderLink(labelHTML: labelHTML, url: link.url, diagnostics: &diagnostics)
+                cursor = link.nextIndex
+                continue
+            }
+
+            buffer.append(text[cursor])
+            cursor = text.index(after: cursor)
+        }
+
+        flushBuffer()
+        return output
+    }
+
+    private func startsBlock(_ line: String, lines: [String], index: Int) -> Bool {
+        isFenceStart(line)
+            || parseHeading(line) != nil
+            || isHorizontalRule(line)
+            || isBlockquote(line)
+            || parseUnorderedListItem(line) != nil
+            || parseOrderedListItem(line) != nil
+            || (index + 1 < lines.count && parseTableRow(line) != nil && parseTableRow(lines[index + 1]).map(isTableSeparator) == true)
+    }
+
+    private func parseHeading(_ line: String) -> (level: Int, title: String)? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        var level = 0
+        var cursor = trimmed.startIndex
+
+        while cursor < trimmed.endIndex, trimmed[cursor] == "#", level < 6 {
+            level += 1
+            cursor = trimmed.index(after: cursor)
+        }
+
+        guard level > 0, cursor < trimmed.endIndex, trimmed[cursor] == " " else {
+            return nil
+        }
+
+        let title = String(trimmed[trimmed.index(after: cursor)...]).trimmingCharacters(in: .whitespaces)
+        guard !title.isEmpty else {
+            return nil
+        }
+
+        return (level, title)
+    }
+
+    private func isFenceStart(_ line: String) -> Bool {
+        line.trimmingCharacters(in: .whitespaces).hasPrefix("```")
+    }
+
+    private func isHorizontalRule(_ line: String) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard trimmed.count >= 3 else {
+            return false
+        }
+        return trimmed.allSatisfy { $0 == "-" } || trimmed.allSatisfy { $0 == "*" } || trimmed.allSatisfy { $0 == "_" }
+    }
+
+    private func isBlockquote(_ line: String) -> Bool {
+        line.trimmingCharacters(in: .whitespaces).hasPrefix(">")
+    }
+
+    private func parseUnorderedListItem(_ line: String) -> String? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        for marker in ["- ", "* ", "+ "] where trimmed.hasPrefix(marker) {
+            return String(trimmed.dropFirst(marker.count))
+        }
+        return nil
+    }
+
+    private func parseOrderedListItem(_ line: String) -> String? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard let markerRange = trimmed.range(of: #"^\d+[.)]\s+"#, options: .regularExpression) else {
+            return nil
+        }
+        return String(trimmed[markerRange.upperBound...])
+    }
+
+    private func parseTableRow(_ line: String) -> [String]? {
+        var trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard trimmed.contains("|") else {
+            return nil
+        }
+
+        if trimmed.first == "|" {
+            trimmed.removeFirst()
+        }
+        if trimmed.last == "|" {
+            trimmed.removeLast()
+        }
+
+        let cells = trimmed
+            .split(separator: "|", omittingEmptySubsequences: false)
+            .map { String($0).trimmingCharacters(in: .whitespaces) }
+
+        return cells.count > 1 ? cells : nil
+    }
+
+    private func isTableSeparator(_ cells: [String]) -> Bool {
+        cells.allSatisfy { cell in
+            let marker = cell
+                .trimmingCharacters(in: .whitespaces)
+                .replacingOccurrences(of: ":", with: "")
+            return marker.count >= 3 && marker.allSatisfy { $0 == "-" }
+        }
+    }
+
+    private func parseImage(in text: String, at index: String.Index) -> (alt: String, url: String, nextIndex: String.Index)? {
+        let bracketStart = text.index(after: index)
+        guard bracketStart < text.endIndex, text[bracketStart] == "[" else {
+            return nil
+        }
+
+        guard let parsed = parseBracketedTarget(in: text, labelStart: text.index(after: bracketStart)) else {
+            return nil
+        }
+
+        return (parsed.label, parsed.url, parsed.nextIndex)
+    }
+
+    private func parseLink(in text: String, at index: String.Index) -> (label: String, url: String, nextIndex: String.Index)? {
+        parseBracketedTarget(in: text, labelStart: text.index(after: index))
+    }
+
+    private func parseBracketedTarget(
+        in text: String,
+        labelStart: String.Index
+    ) -> (label: String, url: String, nextIndex: String.Index)? {
+        guard let labelEnd = text[labelStart...].firstIndex(of: "]") else {
+            return nil
+        }
+
+        let parenthesisStart = text.index(after: labelEnd)
+        guard parenthesisStart < text.endIndex, text[parenthesisStart] == "(" else {
+            return nil
+        }
+
+        let urlStart = text.index(after: parenthesisStart)
+        guard let urlEnd = closingParenthesis(in: text, from: urlStart) else {
+            return nil
+        }
+
+        return (
+            String(text[labelStart..<labelEnd]),
+            String(text[urlStart..<urlEnd]),
+            text.index(after: urlEnd)
+        )
+    }
+
+    private func closingParenthesis(in text: String, from start: String.Index) -> String.Index? {
+        var depth = 0
+        var cursor = start
+
+        while cursor < text.endIndex {
+            if text[cursor] == "(" {
+                depth += 1
+            } else if text[cursor] == ")" {
+                if depth == 0 {
+                    return cursor
+                }
+                depth -= 1
+            }
+            cursor = text.index(after: cursor)
+        }
+
+        return nil
+    }
+
+    private func sanitizedLanguageClass(_ info: String) -> String {
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_"))
+        let scalars = info.unicodeScalars.prefix { allowed.contains($0) }
+        return String(String.UnicodeScalarView(scalars))
+    }
+}

@@ -31,6 +31,7 @@ jobs:
           test -f MarkLookApp/MarkLook.entitlements
           test -f Scripts/validate-supported-types.sh
           test -f Scripts/validate-built-bundle.sh
+          test -f Scripts/validate-renderer-security.sh
       - name: Validate plists and entitlements
         run: |
           plutil -lint MarkLookApp/Info.plist
@@ -53,6 +54,7 @@ jobs:
           sh -n Scripts/package-debug.sh
           sh -n Scripts/validate-supported-types.sh
           sh -n Scripts/validate-built-bundle.sh
+          sh -n Scripts/validate-renderer-security.sh
       - name: Check whitespace
         run: git diff --check
       - name: Install XcodeGen
@@ -78,7 +80,7 @@ jobs:
           test -d .build/DerivedData/Build/Products/Debug/MarkLook.app/Contents/PlugIns/MarkLookPreview.appex
           test -d .build/DerivedData/Build/Products/Debug/MarkLook.app/Contents/PlugIns/MarkLookThumbnail.appex
           Scripts/validate-built-bundle.sh .build/DerivedData/Build/Products/Debug/MarkLook.app
-      - name: Test MarkdownCore placeholder package
+      - name: Test MarkdownCore renderer package
         run: |
           cd Packages/MarkdownCore
           swift test

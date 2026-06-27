@@ -21,6 +21,8 @@ Use this checklist for every pull request.
 - Raw HTML and scripts remain disabled or sanitized.
 - Remote resources are not loaded during preview rendering.
 - Sandbox and Hardened Runtime settings are preserved or explained.
+- MarkdownCore remains free of WebKit and AppKit imports.
+- Renderer HTML remains self-contained with a restrictive CSP.
 
 ## Quick Look
 
