@@ -11,12 +11,23 @@
 
 ```bash
 xcodegen generate
-xcodebuild -project MarkLook.xcodeproj -scheme MarkLook -configuration Debug -derivedDataPath .build/DerivedData build
+xcodebuild -project MarkLook.xcodeproj -scheme MarkLook -configuration Debug -derivedDataPath .build/DerivedData CODE_SIGNING_ALLOWED=NO build
+test -d .build/DerivedData/Build/Products/Debug/MarkLook.app
+test -d .build/DerivedData/Build/Products/Debug/MarkLook.app/Contents/PlugIns/MarkLookPreview.appex
+test -d .build/DerivedData/Build/Products/Debug/MarkLook.app/Contents/PlugIns/MarkLookThumbnail.appex
 open .build/DerivedData/Build/Products/Debug/MarkLook.app
 qlmanage -r
 qlmanage -r cache
 killall Finder || true
 ```
+
+Expected for Issue #2:
+
+- MarkLook.app opens.
+- Preview and Thumbnail app extensions are embedded in `Contents/PlugIns`.
+- Preview shell is local placeholder UI only.
+- Thumbnail shell produces a static Markdown identity thumbnail.
+- Rendered Markdown preview is not implemented yet.
 
 ## Diagnose a file
 

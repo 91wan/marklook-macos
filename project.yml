@@ -12,5 +12,153 @@ settings:
 packages:
   MarkdownCore:
     path: Packages/MarkdownCore
-targets: {}
-schemes: {}
+targets:
+  MarkLook:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: MarkLookApp
+        excludes:
+          - Assets.xcassets
+          - Info.plist
+          - MarkLook.entitlements
+      - path: Shared
+    resources:
+      - path: MarkLookApp/Assets.xcassets
+    info:
+      path: MarkLookApp/Info.plist
+      properties:
+        CFBundleDevelopmentRegion: "$(DEVELOPMENT_LANGUAGE)"
+        CFBundleExecutable: "$(EXECUTABLE_NAME)"
+        CFBundleIdentifier: "$(PRODUCT_BUNDLE_IDENTIFIER)"
+        CFBundleInfoDictionaryVersion: "6.0"
+        CFBundleName: "$(PRODUCT_NAME)"
+        CFBundlePackageType: APPL
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        LSApplicationCategoryType: public.app-category.developer-tools
+        LSMinimumSystemVersion: "$(MACOSX_DEPLOYMENT_TARGET)"
+        NSHumanReadableCopyright: "Copyright © 2026 MarkLook contributors. MIT License."
+        NSPrincipalClass: NSApplication
+    entitlements:
+      path: MarkLookApp/MarkLook.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+    dependencies:
+      - target: MarkLookPreview
+        embed: true
+      - target: MarkLookThumbnail
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.91wan.MarkLook
+        PRODUCT_NAME: MarkLook
+        CODE_SIGN_ENTITLEMENTS: MarkLookApp/MarkLook.entitlements
+
+  MarkLookPreview:
+    type: app-extension
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: PreviewExtension
+        excludes:
+          - Info.plist
+          - PreviewExtension.entitlements
+      - path: Shared
+    info:
+      path: PreviewExtension/Info.plist
+      properties:
+        CFBundleDevelopmentRegion: "$(DEVELOPMENT_LANGUAGE)"
+        CFBundleDisplayName: MarkLook Preview
+        CFBundleExecutable: "$(EXECUTABLE_NAME)"
+        CFBundleIdentifier: "$(PRODUCT_BUNDLE_IDENTIFIER)"
+        CFBundleInfoDictionaryVersion: "6.0"
+        CFBundleName: "$(PRODUCT_NAME)"
+        CFBundlePackageType: XPC!
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        NSExtension:
+          NSExtensionAttributes:
+            QLIsDataBasedPreview: true
+            QLSupportedContentTypes:
+              - net.daringfireball.markdown
+              - public.markdown
+              - net.ia.markdown
+              - io.typora.markdown
+              - com.unknown.md
+              - net.daringfireball
+              - com.apple.dt.document.markdown
+              - com.rstudio.rmarkdown
+              - org.quarto.qmarkdown
+            QLSupportsSearchableItems: false
+          NSExtensionPointIdentifier: com.apple.quicklook.preview
+          NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).PreviewViewController"
+    entitlements:
+      path: PreviewExtension/PreviewExtension.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+    dependencies:
+      - package: MarkdownCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.91wan.MarkLook.Preview
+        PRODUCT_NAME: MarkLookPreview
+        CODE_SIGN_ENTITLEMENTS: PreviewExtension/PreviewExtension.entitlements
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+
+  MarkLookThumbnail:
+    type: app-extension
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: ThumbnailExtension
+        excludes:
+          - Info.plist
+          - ThumbnailExtension.entitlements
+      - path: Shared
+    info:
+      path: ThumbnailExtension/Info.plist
+      properties:
+        CFBundleDevelopmentRegion: "$(DEVELOPMENT_LANGUAGE)"
+        CFBundleDisplayName: MarkLook Thumbnail
+        CFBundleExecutable: "$(EXECUTABLE_NAME)"
+        CFBundleIdentifier: "$(PRODUCT_BUNDLE_IDENTIFIER)"
+        CFBundleInfoDictionaryVersion: "6.0"
+        CFBundleName: "$(PRODUCT_NAME)"
+        CFBundlePackageType: XPC!
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        NSExtension:
+          NSExtensionAttributes:
+            QLSupportedContentTypes:
+              - net.daringfireball.markdown
+              - public.markdown
+              - net.ia.markdown
+              - io.typora.markdown
+              - com.unknown.md
+              - net.daringfireball
+              - com.apple.dt.document.markdown
+              - com.rstudio.rmarkdown
+              - org.quarto.qmarkdown
+          NSExtensionPointIdentifier: com.apple.quicklook.thumbnail
+          NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).ThumbnailProvider"
+    entitlements:
+      path: ThumbnailExtension/ThumbnailExtension.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.91wan.MarkLook.Thumbnail
+        PRODUCT_NAME: MarkLookThumbnail
+        CODE_SIGN_ENTITLEMENTS: ThumbnailExtension/ThumbnailExtension.entitlements
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+schemes:
+  MarkLook:
+    build:
+      targets:
+        MarkLook: all
+        MarkLookPreview: all
+        MarkLookThumbnail: all

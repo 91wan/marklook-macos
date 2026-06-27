@@ -21,14 +21,14 @@ Fast, stable, minimal macOS Quick Look Markdown preview for AI/developer long do
 
 ## Current status
 
-The scaffold PR does not yet produce a runnable app or Quick Look extension. Runtime targets are delivered in Issue #2.
+The app and Quick Look extension shells build. Markdown rendering is not implemented yet.
 
-## Build after Issue #2
+## Build
 
 ```bash
 brew install xcodegen
 xcodegen generate
-xcodebuild -project MarkLook.xcodeproj -scheme MarkLook -configuration Debug -derivedDataPath .build/DerivedData build
+xcodebuild -project MarkLook.xcodeproj -scheme MarkLook -configuration Debug -derivedDataPath .build/DerivedData CODE_SIGNING_ALLOWED=NO build
 open .build/DerivedData/Build/Products/Debug/MarkLook.app
 ```
 
