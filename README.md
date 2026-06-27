@@ -4,8 +4,9 @@ Fast, stable, minimal macOS Quick Look Markdown preview for AI/developer long do
 
 ## What it does
 
-- Provides a buildable macOS app with Quick Look preview and thumbnail extension shells.
+- Provides a buildable macOS app with Quick Look preview and thumbnail extensions.
 - Provides a local MarkdownCore renderer for the v0.1 Markdown subset.
+- Renders Markdown previews through the local Preview extension.
 - Targets `.md` files and long AI/Codex review documents.
 - Keeps rendering local.
 - No telemetry.
@@ -21,7 +22,7 @@ Fast, stable, minimal macOS Quick Look Markdown preview for AI/developer long do
 
 ## Current status
 
-The app and Quick Look extension shells build. MarkdownCore now provides a local safe HTML renderer for the v0.1 Markdown subset. Finder Quick Look rendered preview integration is not implemented yet; that lands in Issue #4. Signed PlugInKit registration remains tracked in Issue #11.
+The app and Quick Look extensions build. MarkdownCore provides a local safe HTML renderer for the v0.1 Markdown subset, and the Preview extension renders UTF-8 Markdown through a non-persistent WebKit view with navigation blocked. Signed PlugInKit registration remains tracked in Issue #11.
 
 ## Build
 

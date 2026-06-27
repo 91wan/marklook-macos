@@ -155,6 +155,26 @@ targets:
         CODE_SIGN_ENTITLEMENTS: ThumbnailExtension/ThumbnailExtension.entitlements
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
+
+  MarkLookPreviewTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: PreviewExtensionTests
+      - path: PreviewExtension
+        excludes:
+          - Info.plist
+          - PreviewExtension.entitlements
+    dependencies:
+      - package: MarkdownCore
+    info:
+      path: PreviewExtensionTests/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.91wan.MarkLook.PreviewTests
+        PRODUCT_NAME: MarkLookPreviewTests
+        APPLICATION_EXTENSION_API_ONLY: YES
 schemes:
   MarkLook:
     build:
@@ -162,3 +182,7 @@ schemes:
         MarkLook: all
         MarkLookPreview: all
         MarkLookThumbnail: all
+        MarkLookPreviewTests: [test]
+    test:
+      targets:
+        - MarkLookPreviewTests

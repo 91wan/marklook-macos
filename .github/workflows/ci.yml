@@ -28,6 +28,7 @@ jobs:
           test -f Docs/adr/ADR-0002-markdown-engine.md
           test -f Docs/adr/ADR-0003-security-model.md
           test -f MarkLookApp/Info.plist
+          test -f PreviewExtensionTests/Info.plist
           test -f MarkLookApp/MarkLook.entitlements
           test -f Scripts/validate-supported-types.sh
           test -f Scripts/validate-built-bundle.sh
@@ -35,6 +36,7 @@ jobs:
       - name: Validate plists and entitlements
         run: |
           plutil -lint MarkLookApp/Info.plist
+          plutil -lint PreviewExtensionTests/Info.plist
           plutil -lint MarkLookApp/MarkLook.entitlements
           plutil -lint PreviewExtension/Info.plist
           plutil -lint PreviewExtension/PreviewExtension.entitlements
@@ -65,6 +67,16 @@ jobs:
         run: xcodegen generate
       - name: List Xcode project
         run: xcodebuild -project MarkLook.xcodeproj -list
+      - name: Test MarkLook preview extension
+        run: |
+          xcodebuild \
+            -project MarkLook.xcodeproj \
+            -scheme MarkLook \
+            -configuration Debug \
+            -derivedDataPath .build/DerivedData \
+            -only-testing:MarkLookPreviewTests \
+            CODE_SIGNING_ALLOWED=NO \
+            test
       - name: Build MarkLook
         run: |
           xcodebuild \
@@ -86,5 +98,10 @@ jobs:
           MARKLOOK_RENDERER_SECURITY_FIXTURE=/tmp/marklook-renderer-safe.html swift test
           cd ../..
           Scripts/validate-renderer-security.sh /tmp/marklook-renderer-safe.html
-          ! grep -R "import WebKit" Packages/MarkdownCore
-          ! grep -R "import AppKit" Packages/MarkdownCore
+      - name: Validate preview rendering boundaries
+        run: |
+          ! git grep -n "import WebKit" -- Packages/MarkdownCore Shared ThumbnailExtension MarkLookApp
+          ! git grep -n "import AppKit" -- Packages/MarkdownCore
+          git grep -n "import WebKit" -- PreviewExtension
+          ! git grep -n "allowRawHTML" -- MarkLookApp PreviewExtension ThumbnailExtension Shared Packages/MarkdownCore Scripts project.yml
+          ! git grep -n "allowRemoteResources" -- MarkLookApp PreviewExtension ThumbnailExtension Shared Packages/MarkdownCore Scripts project.yml
