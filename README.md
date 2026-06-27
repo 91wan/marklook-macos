@@ -4,9 +4,9 @@ Fast, stable, minimal macOS Quick Look Markdown preview for AI/developer long do
 
 ## What it does
 
-- Renders `.md` files in Finder Quick Look.
-- Handles long AI/Codex review documents.
-- Supports GFM basics: headings, lists, task lists, tables, fenced code blocks.
+- Provides a macOS app and Quick Look extension shell for Markdown preview work.
+- Targets `.md` files and long AI/Codex review documents.
+- Keeps all future rendering local.
 - Runs locally.
 - No telemetry.
 - No network during preview rendering.
@@ -25,12 +25,18 @@ The app and Quick Look extension shells build. Markdown rendering is not impleme
 
 ## Build
 
+CI-compatible build and embedding check:
+
 ```bash
 brew install xcodegen
 xcodegen generate
 xcodebuild -project MarkLook.xcodeproj -scheme MarkLook -configuration Debug -derivedDataPath .build/DerivedData CODE_SIGNING_ALLOWED=NO build
-open .build/DerivedData/Build/Products/Debug/MarkLook.app
+test -d .build/DerivedData/Build/Products/Debug/MarkLook.app
+test -d .build/DerivedData/Build/Products/Debug/MarkLook.app/Contents/PlugIns/MarkLookPreview.appex
+test -d .build/DerivedData/Build/Products/Debug/MarkLook.app/Contents/PlugIns/MarkLookThumbnail.appex
 ```
+
+`CODE_SIGNING_ALLOWED=NO` is for build validation only. Local app launch and Quick Look registration require a signed build accepted by the host macOS security policy.
 
 ## Refresh Quick Look
 
