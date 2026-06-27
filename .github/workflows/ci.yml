@@ -24,6 +24,7 @@ jobs:
           test -f Docs/architecture.md
           test -f Docs/review-checklist.md
           test -f Docs/manual-validation.md
+          test -f Docs/signing-and-plugin-validation.md
           test -f Docs/adr/ADR-0001-modern-quicklook-extension.md
           test -f Docs/adr/ADR-0002-markdown-engine.md
           test -f Docs/adr/ADR-0003-security-model.md
@@ -33,6 +34,7 @@ jobs:
           test -f Scripts/validate-supported-types.sh
           test -f Scripts/validate-built-bundle.sh
           test -f Scripts/validate-renderer-security.sh
+          test -f Scripts/validate-signed-quicklook.sh
       - name: Validate plists and entitlements
         run: |
           plutil -lint MarkLookApp/Info.plist
@@ -57,6 +59,7 @@ jobs:
           sh -n Scripts/validate-supported-types.sh
           sh -n Scripts/validate-built-bundle.sh
           sh -n Scripts/validate-renderer-security.sh
+          sh -n Scripts/validate-signed-quicklook.sh
       - name: Check whitespace
         run: git diff --check
       - name: Install XcodeGen
