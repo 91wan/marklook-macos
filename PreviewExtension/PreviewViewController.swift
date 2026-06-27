@@ -1,7 +1,7 @@
 import Cocoa
 import Quartz
 
-final class PreviewViewController: NSViewController, @MainActor QLPreviewingController {
+final class PreviewViewController: NSViewController, @preconcurrency QLPreviewingController {
     override func loadView() {
         view = PreviewHTMLView(
             fileName: "MarkLook Preview Extension Loaded",
