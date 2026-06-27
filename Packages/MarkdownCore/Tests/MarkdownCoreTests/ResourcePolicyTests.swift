@@ -1,1 +1,97 @@
-// Placeholder for Issue #3.
+import XCTest
+@testable import MarkdownCore
+
+final class ResourcePolicyTests: XCTestCase {
+    private let renderer = MarkdownRenderer()
+
+    func testHTTPSImageBlockedByDefault() throws {
+        let result = try renderer.render(MarkdownDocument(source: "![remote](https://example.com/a.png)"))
+
+        XCTAssertFalse(result.html.contains("src=\"https://example.com/a.png\""))
+        XCTAssertTrue(result.html.contains("Remote image blocked"))
+        XCTAssertTrue(result.diagnostics.contains { $0.kind == .blockedRemoteResource })
+    }
+
+    func testHTTPImageBlockedByDefault() throws {
+        let result = try renderer.render(MarkdownDocument(source: "![remote](http://example.com/a.png)"))
+
+        XCTAssertFalse(result.html.contains("src=\"http://example.com/a.png\""))
+        XCTAssertTrue(result.diagnostics.contains { $0.kind == .blockedRemoteResource })
+    }
+
+    func testDataImageAlwaysBlocked() throws {
+        let source = "![inline](data:image/png;base64,AAAA)"
+
+        let result = try renderer.render(MarkdownDocument(source: source))
+
+        XCTAssertFalse(result.html.contains("src=\"data:image/png;base64,AAAA\""))
+        XCTAssertFalse(result.html.localizedCaseInsensitiveContains("data:image"))
+        XCTAssertTrue(result.html.contains("Remote image blocked"))
+        XCTAssertTrue(result.diagnostics.contains { $0.kind == .blockedRemoteResource })
+    }
+
+    func testHTTPSLinkDoesNotEmitNavigableHref() throws {
+        let result = try renderer.render(MarkdownDocument(source: "[site](https://example.com)"))
+
+        XCTAssertFalse(result.html.contains("href=\"https://example.com\""))
+        XCTAssertFalse(result.html.contains("href="))
+        XCTAssertTrue(result.html.contains("class=\"markdown-link\""))
+        XCTAssertTrue(result.html.contains("data-url=\"https://example.com\""))
+    }
+
+    func testFileLinkDoesNotEmitNavigableHref() throws {
+        let result = try renderer.render(MarkdownDocument(source: "[file](file:///etc/passwd)"))
+
+        XCTAssertFalse(result.html.contains("href=\"file://"))
+        XCTAssertFalse(result.html.contains("href="))
+        XCTAssertTrue(result.html.contains("data-url=\"file:///etc/passwd\""))
+    }
+
+    func testAppleSystemPreferencesLinkDoesNotEmitNavigableHref() throws {
+        let result = try renderer.render(MarkdownDocument(source: "[settings](x-apple.systempreferences:com.apple.preference.security)"))
+
+        XCTAssertFalse(result.html.contains("href=\"x-apple"))
+        XCTAssertFalse(result.html.contains("href="))
+        XCTAssertTrue(result.html.contains("data-url=\"x-apple.systempreferences:com.apple.preference.security\""))
+    }
+
+    func testItmsServicesLinkDoesNotEmitNavigableHref() throws {
+        let result = try renderer.render(MarkdownDocument(source: "[install](itms-services://?action=download-manifest&url=https://example.com/a.plist)"))
+
+        XCTAssertFalse(result.html.contains("href=\"itms-services"))
+        XCTAssertFalse(result.html.contains("href="))
+        XCTAssertTrue(result.html.contains("data-url=\"itms-services://?action=download-manifest&amp;url=https://example.com/a.plist\""))
+    }
+
+    func testJavascriptLinkDoesNotEmitNavigableHrefOrScheme() throws {
+        let result = try renderer.render(MarkdownDocument(source: "[bad](javascript:alert(1))"))
+
+        XCTAssertFalse(result.html.contains("href="))
+        XCTAssertFalse(result.html.contains("javascript:"))
+        XCTAssertTrue(result.html.contains("class=\"markdown-link\""))
+        XCTAssertTrue(result.html.contains("data-url=\"\""))
+        XCTAssertTrue(result.diagnostics.contains { $0.kind == .unsafeLink })
+    }
+
+    func testRawHTMLScriptBlocked() throws {
+        let result = try renderer.render(MarkdownDocument(source: "<script>alert(1)</script>"))
+
+        XCTAssertFalse(result.html.localizedCaseInsensitiveContains("<script"))
+        XCTAssertTrue(result.html.contains("&lt;script&gt;alert(1)&lt;/script&gt;"))
+        XCTAssertTrue(result.diagnostics.contains { $0.kind == .rawHTMLBlocked })
+    }
+
+    func testIFrameBlocked() throws {
+        let result = try renderer.render(MarkdownDocument(source: "<iframe src=\"https://example.com\"></iframe>"))
+
+        XCTAssertFalse(result.html.localizedCaseInsensitiveContains("<iframe"))
+        XCTAssertTrue(result.diagnostics.contains { $0.kind == .rawHTMLBlocked })
+    }
+
+    func testEventAttributesBlocked() throws {
+        let result = try renderer.render(MarkdownDocument(source: "<img src=x onerror=alert(1)>"))
+
+        XCTAssertFalse(result.html.localizedCaseInsensitiveContains("onerror="))
+        XCTAssertTrue(result.diagnostics.contains { $0.kind == .rawHTMLBlocked })
+    }
+}
