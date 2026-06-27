@@ -28,4 +28,26 @@ final class SnapshotTests: XCTestCase {
         XCTAssertFalse(result.html.contains("src=\"https://"))
         XCTAssertEqual(result.frontMatter?.fields["title"], "Safe Snapshot")
     }
+
+    func testWritesRendererSecurityFixtureWhenRequested() throws {
+        guard let path = ProcessInfo.processInfo.environment["MARKLOOK_RENDERER_SECURITY_FIXTURE"] else {
+            return
+        }
+
+        let source = """
+        # Safe Fixture
+        <script>alert(1)</script>
+        <iframe src="https://example.com"></iframe>
+        <img src=x onerror=alert(1)>
+        ![remote](https://example.com/a.png)
+        ![data](data:image/svg+xml,<svg onload=alert(1) />)
+        [bad](javascript:alert(1))
+        [file](file:///etc/passwd)
+        [settings](x-apple.systempreferences:com.apple.preference.security)
+        [install](itms-services://?action=download-manifest&url=https://example.com/a.plist)
+        """
+        let result = try MarkdownRenderer().render(MarkdownDocument(source: source))
+
+        try result.html.write(toFile: path, atomically: true, encoding: .utf8)
+    }
 }

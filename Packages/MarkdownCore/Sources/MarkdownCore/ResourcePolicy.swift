@@ -18,13 +18,7 @@ public struct RenderDiagnostic: Equatable, Sendable {
 }
 
 struct ResourcePolicy {
-    let options: RenderOptions
-
     func sanitizeText(_ text: String, diagnostics: inout [RenderDiagnostic]) -> String {
-        if options.allowRawHTML {
-            return text
-        }
-
         let escaped = Self.escapeHTML(text)
         guard Self.containsRawHTML(text) else {
             return escaped
@@ -35,14 +29,6 @@ struct ResourcePolicy {
     }
 
     func renderImage(alt: String, url: String, diagnostics: inout [RenderDiagnostic]) -> String {
-        let trimmedURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
-        let lowerURL = trimmedURL.lowercased()
-        let escapedAlt = Self.escapeAttribute(alt)
-
-        if lowerURL.hasPrefix("data:image/"), options.allowRemoteResources {
-            return "<img alt=\"\(escapedAlt)\" src=\"\(Self.escapeAttribute(trimmedURL))\">"
-        }
-
         diagnostics.append(RenderDiagnostic(kind: .blockedRemoteResource, message: "Image resource was blocked."))
         let label = alt.isEmpty ? "image" : Self.escapeHTML(alt)
         return "<span class=\"blocked-resource\">Remote image blocked: \(label)</span>"
@@ -52,10 +38,10 @@ struct ResourcePolicy {
         let trimmedURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
         if Self.isUnsafeLink(trimmedURL) {
             diagnostics.append(RenderDiagnostic(kind: .unsafeLink, message: "Unsafe link target was replaced."))
-            return "<a href=\"#\">\(labelHTML)</a>"
+            return "<span class=\"markdown-link\" data-url=\"\">\(labelHTML)</span>"
         }
 
-        return "<a href=\"\(Self.escapeAttribute(trimmedURL))\">\(labelHTML)</a>"
+        return "<span class=\"markdown-link\" data-url=\"\(Self.escapeAttribute(trimmedURL))\">\(labelHTML)</span>"
     }
 
     static func escapeHTML(_ text: String) -> String {

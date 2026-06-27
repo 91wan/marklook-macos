@@ -1,21 +1,18 @@
 import Foundation
 
 public struct RenderOptions: Equatable, Sendable {
-    public let allowRawHTML: Bool
-    public let allowRemoteResources: Bool
     public let includeTableOfContents: Bool
     public let fastModeByteThreshold: Int
+    public let fastModePreviewByteLimit: Int
 
     public init(
-        allowRawHTML: Bool = false,
-        allowRemoteResources: Bool = false,
         includeTableOfContents: Bool = true,
-        fastModeByteThreshold: Int = 1_000_000
+        fastModeByteThreshold: Int = 1_000_000,
+        fastModePreviewByteLimit: Int = 80_000
     ) {
-        self.allowRawHTML = allowRawHTML
-        self.allowRemoteResources = allowRemoteResources
         self.includeTableOfContents = includeTableOfContents
         self.fastModeByteThreshold = fastModeByteThreshold
+        self.fastModePreviewByteLimit = fastModePreviewByteLimit
     }
 }
 
@@ -57,28 +54,67 @@ public extension MarkdownRendering {
 public struct MarkdownRenderer: MarkdownRendering, Sendable {
     private let builder: HTMLDocumentBuilder
 
-    public init(builder: HTMLDocumentBuilder = HTMLDocumentBuilder()) {
-        self.builder = builder
+    public init() {
+        self.builder = HTMLDocumentBuilder()
     }
 
     public func render(_ document: MarkdownDocument, options: RenderOptions = RenderOptions()) throws -> RenderResult {
-        var renderer = BlockRenderer(options: options)
-        let bodyHTML = renderer.render(document.source)
-        let title = document.frontMatter?.fields["title"] ?? renderer.tableOfContents.first?.title ?? "MarkLook"
-        let usedFastMode = document.sourceByteCount > options.fastModeByteThreshold
-
-        if usedFastMode {
-            renderer.diagnostics.append(RenderDiagnostic(kind: .fastMode, message: "Document exceeded fast mode threshold."))
+        if document.sourceByteCount > options.fastModeByteThreshold {
+            return renderFast(document, options: options)
         }
 
+        return renderFull(document, options: options)
+    }
+
+    private func renderFull(_ document: MarkdownDocument, options: RenderOptions) -> RenderResult {
+        var renderer = BlockRenderer(options: options)
+        let bodyHTML = renderer.render(document.source)
+
         return RenderResult(
-            html: builder.build(title: title, bodyHTML: bodyHTML),
+            html: builder.build(title: title(for: document, renderer: renderer), trustedBodyHTML: bodyHTML),
             tableOfContents: renderer.tableOfContents,
             frontMatter: document.frontMatter,
             diagnostics: renderer.diagnostics,
-            usedFastMode: usedFastMode,
+            usedFastMode: false,
             sourceByteCount: document.sourceByteCount
         )
+    }
+
+    private func renderFast(_ document: MarkdownDocument, options: RenderOptions) -> RenderResult {
+        let previewSource = Self.utf8SafePrefix(document.source, byteLimit: options.fastModePreviewByteLimit)
+        var renderer = BlockRenderer(options: options)
+        let bodyHTML = renderer.render(previewSource)
+        renderer.diagnostics.append(RenderDiagnostic(kind: .fastMode, message: "Document exceeded fast mode threshold."))
+        let warningHTML = "<p class=\"render-warning\">Fast mode: document truncated for Quick Look responsiveness.</p>"
+
+        return RenderResult(
+            html: builder.build(title: title(for: document, renderer: renderer), trustedBodyHTML: "\(warningHTML)\n\(bodyHTML)"),
+            tableOfContents: renderer.tableOfContents,
+            frontMatter: document.frontMatter,
+            diagnostics: renderer.diagnostics,
+            usedFastMode: true,
+            sourceByteCount: document.sourceByteCount
+        )
+    }
+
+    private func title(for document: MarkdownDocument, renderer: BlockRenderer) -> String {
+        document.frontMatter?.fields["title"] ?? renderer.tableOfContents.first?.title ?? "MarkLook"
+    }
+
+    private static func utf8SafePrefix(_ source: String, byteLimit: Int) -> String {
+        guard byteLimit > 0 else {
+            return ""
+        }
+
+        var bytes = Array(source.utf8.prefix(byteLimit))
+        while !bytes.isEmpty {
+            if let prefix = String(bytes: bytes, encoding: .utf8) {
+                return prefix
+            }
+            bytes.removeLast()
+        }
+
+        return ""
     }
 }
 
@@ -301,7 +337,7 @@ private struct BlockRenderer {
     }
 
     private mutating func renderInline(_ text: String) -> String {
-        let policy = ResourcePolicy(options: options)
+        let policy = ResourcePolicy()
         var output = ""
         var buffer = ""
         var cursor = text.startIndex

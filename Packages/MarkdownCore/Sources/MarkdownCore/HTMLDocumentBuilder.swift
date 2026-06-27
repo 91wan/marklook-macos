@@ -1,9 +1,9 @@
 import Foundation
 
-public struct HTMLDocumentBuilder: Sendable {
-    public init() {}
+struct HTMLDocumentBuilder: Sendable {
+    init() {}
 
-    public func build(title: String, bodyHTML: String) -> String {
+    func build(title: String, trustedBodyHTML: String) -> String {
         let safeTitle = ResourcePolicy.escapeHTML(title)
 
         return """
@@ -12,7 +12,7 @@ public struct HTMLDocumentBuilder: Sendable {
         <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline';">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'none'; style-src 'unsafe-inline';">
         <title>\(safeTitle)</title>
         <style>
         :root {
@@ -61,11 +61,20 @@ public struct HTMLDocumentBuilder: Sendable {
           border-radius: 4px;
           font-size: 0.92em;
         }
+        .markdown-link {
+          text-decoration: underline;
+          text-decoration-style: dotted;
+        }
+        .render-warning {
+          padding: 8px 10px;
+          border: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
+          border-radius: 4px;
+        }
         </style>
         </head>
         <body>
         <main class="markdown-body">
-        \(bodyHTML)
+        \(trustedBodyHTML)
         </main>
         </body>
         </html>
