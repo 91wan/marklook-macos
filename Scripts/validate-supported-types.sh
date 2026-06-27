@@ -4,6 +4,7 @@ set -euo pipefail
 preview_types="$(mktemp)"
 thumbnail_types="$(mktemp)"
 swift_types="$(mktemp)"
+trap 'rm -f "$preview_types" "$thumbnail_types" "$swift_types"' EXIT
 
 /usr/libexec/PlistBuddy -c 'Print :NSExtension:NSExtensionAttributes:QLSupportedContentTypes' PreviewExtension/Info.plist |
   awk '/^[[:space:]]+[[:alnum:].-]+$/ { gsub(/^[[:space:]]+/, ""); print }' > "$preview_types"

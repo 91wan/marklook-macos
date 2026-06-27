@@ -40,7 +40,7 @@ struct ContentView: View {
                 StatusRow(text: "Preview extension shell builds and is embedded.")
                 StatusRow(text: "Thumbnail extension shell builds and is embedded.")
                 StatusRow(text: "Preview rendering lands in Issue #4.")
-                StatusRow(text: "Thumbnail rendering lands in Issue #5.")
+                StatusRow(text: "Full thumbnail metadata rendering lands in Issue #5.")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
