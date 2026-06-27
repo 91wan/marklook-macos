@@ -49,9 +49,12 @@ Initial supported content types:
 - `net.daringfireball.markdown`
 - `public.markdown`
 - `net.ia.markdown`
+- `io.typora.markdown`
 - `com.unknown.md`
 - `net.daringfireball`
 - `com.apple.dt.document.markdown`
+- `com.rstudio.rmarkdown`
+- `org.quarto.qmarkdown`
 
 Initial extensions:
 

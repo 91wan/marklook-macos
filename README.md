@@ -19,7 +19,11 @@ Fast, stable, minimal macOS Quick Look Markdown preview for AI/developer long do
 - Not an Electron app.
 - Not a deprecated `.qlgenerator`.
 
-## Build
+## Current status
+
+The scaffold PR does not yet produce a runnable app or Quick Look extension. Runtime targets are delivered in Issue #2.
+
+## Build after Issue #2
 
 ```bash
 brew install xcodegen
@@ -27,8 +31,6 @@ xcodegen generate
 xcodebuild -project MarkLook.xcodeproj -scheme MarkLook -configuration Debug -derivedDataPath .build/DerivedData build
 open .build/DerivedData/Build/Products/Debug/MarkLook.app
 ```
-
-The first PR contains repository governance and a draft project skeleton only. The build command becomes active when the app and extension shells land.
 
 ## Refresh Quick Look
 

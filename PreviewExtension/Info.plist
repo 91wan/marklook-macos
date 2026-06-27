@@ -4,19 +4,29 @@
 <dict>
   <key>NSExtension</key>
   <dict>
+    <key>NSExtensionAttributes</key>
+    <dict>
+      <key>QLIsDataBasedPreview</key>
+      <true/>
+      <key>QLSupportedContentTypes</key>
+      <array>
+        <string>net.daringfireball.markdown</string>
+        <string>public.markdown</string>
+        <string>net.ia.markdown</string>
+        <string>io.typora.markdown</string>
+        <string>com.unknown.md</string>
+        <string>net.daringfireball</string>
+        <string>com.apple.dt.document.markdown</string>
+        <string>com.rstudio.rmarkdown</string>
+        <string>org.quarto.qmarkdown</string>
+      </array>
+      <key>QLSupportsSearchableItems</key>
+      <false/>
+    </dict>
     <key>NSExtensionPointIdentifier</key>
     <string>com.apple.quicklook.preview</string>
     <key>NSExtensionPrincipalClass</key>
     <string>$(PRODUCT_MODULE_NAME).PreviewViewController</string>
-    <key>QLSupportedContentTypes</key>
-    <array>
-      <string>net.daringfireball.markdown</string>
-      <string>public.markdown</string>
-      <string>net.ia.markdown</string>
-      <string>com.unknown.md</string>
-      <string>net.daringfireball</string>
-      <string>com.apple.dt.document.markdown</string>
-    </array>
   </dict>
 </dict>
 </plist>
