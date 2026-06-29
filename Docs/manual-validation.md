@@ -70,6 +70,7 @@ qlmanage -r cache
 killall Finder || true
 pluginkit -mAv -p com.apple.quicklook.preview | grep -i MarkLook
 pluginkit -mAv -p com.apple.quicklook.thumbnail | grep -i MarkLook
+pluginkit -mAv -i com.91wan.MarkLook.Thumbnail
 mdls -name kMDItemContentType Samples/basic.md
 qlmanage -p Samples/basic.md
 qlmanage -p Samples/gfm-table-task-list.md
@@ -98,10 +99,11 @@ spctl --assess --type execute --verbose=4 .build/LocalDerivedData/Build/Products
 codesign --verify --deep --strict --verbose=4 .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
 pluginkit -mAv -p com.apple.quicklook.preview | grep -i MarkLook
 pluginkit -mAv -p com.apple.quicklook.thumbnail | grep -i MarkLook
+pluginkit -mAv -i com.91wan.MarkLook.Thumbnail
 mdls -name kMDItemContentType Samples/basic.md
 ```
 
-Record exact output when MarkLook is not selected. Do not treat Finder behavior as product behavior until macOS accepts the signed app and extensions.
+Record exact output when MarkLook is not selected. Prefer exact bundle-id lookup as fallback evidence for the thumbnail extension because provider-family listing can be incomplete on some macOS versions. Do not treat Finder behavior as product behavior until macOS accepts the signed app and extensions.
 
 ## Thumbnail checks
 
