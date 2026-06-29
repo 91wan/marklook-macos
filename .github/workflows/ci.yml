@@ -35,6 +35,8 @@ jobs:
           test -f Scripts/validate-built-bundle.sh
           test -f Scripts/validate-renderer-security.sh
           test -f Scripts/validate-signed-quicklook.sh
+          test -f Scripts/build-local-apple-development.sh
+          test -f Scripts/doctor-signing.sh
       - name: Validate plists and entitlements
         run: |
           plutil -lint MarkLookApp/Info.plist
@@ -60,6 +62,8 @@ jobs:
           sh -n Scripts/validate-built-bundle.sh
           sh -n Scripts/validate-renderer-security.sh
           sh -n Scripts/validate-signed-quicklook.sh
+          sh -n Scripts/build-local-apple-development.sh
+          sh -n Scripts/doctor-signing.sh
       - name: Check whitespace
         run: git diff --check
       - name: Install XcodeGen

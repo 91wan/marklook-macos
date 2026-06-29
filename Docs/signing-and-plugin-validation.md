@@ -8,6 +8,29 @@ This tooling supports Issue #11 evidence collection only. It does not satisfy Is
 
 Use one of these signing paths.
 
+### Local development validation with ordinary Apple ID / Personal Team
+
+Use this for Issue #11 local validation on the repository owner's Mac. It proves local host acceptance, PlugInKit registration, and Finder/Quick Look behavior for development. It does not prove public distribution trust.
+
+1. Open Xcode -> Settings -> Accounts.
+2. Add the owner's Apple ID.
+3. Open Manage Certificates and create an Apple Development certificate.
+4. Confirm the identity and Team ID:
+
+```bash
+Scripts/doctor-signing.sh
+security find-identity -p codesigning -v
+```
+
+Then build and smoke test with the Team ID from Xcode or the identity output:
+
+```bash
+DEVELOPMENT_TEAM=<TEAM_ID> Scripts/build-local-apple-development.sh
+Scripts/validate-signed-quicklook.sh --development .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
+```
+
+`--development` still rejects ad-hoc signatures and missing TeamIdentifier values. It records `spctl --assess`; if `spctl` rejects an Apple Development build, the script may continue only after proving the signature is non-ad-hoc and has a TeamIdentifier. This mode is for local development validation only.
+
 Developer ID Application is the release-style path:
 
 ```bash
@@ -32,13 +55,17 @@ Do not use ad-hoc signing as PlugInKit proof. Ad-hoc signing may satisfy a narro
 ## Run signed Quick Look smoke
 
 ```bash
-Scripts/validate-signed-quicklook.sh .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
+Scripts/validate-signed-quicklook.sh --development .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
+Scripts/validate-signed-quicklook.sh --release .build/LocalDerivedData/Build/Products/Release/MarkLook.app
 ```
+
+Without a mode flag, the script defaults to `--release`.
 
 The script runs:
 
 ```bash
 codesign --verify --deep --strict --verbose=4 "$APP"
+codesign -dv --verbose=4 "$APP"
 spctl --assess --type execute --verbose=4 "$APP"
 open "$APP"
 qlmanage -r
@@ -78,8 +105,10 @@ killall Finder || true
 Record exact output in the PR or issue comment:
 
 ```text
+signature is not ad-hoc
+TeamIdentifier is set
 codesign verify: pass
-spctl assess: pass
+spctl assess: pass for release; recorded for local development
 open MarkLook.app: pass
 pluginkit preview contains MarkLookPreview
 pluginkit thumbnail contains MarkLookThumbnail
