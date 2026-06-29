@@ -72,6 +72,7 @@ qlmanage -r
 qlmanage -r cache
 killall Finder || true
 pluginkit -mAv -p com.apple.quicklook.preview | grep -i MarkLook
+pluginkit -mAv -i com.91wan.MarkLook.Preview
 pluginkit -mAv -p com.apple.quicklook.thumbnail | grep -i MarkLook
 pluginkit -mAv -i com.91wan.MarkLook.Thumbnail
 mdls -name kMDItemContentType Samples/basic.md
@@ -112,6 +113,7 @@ codesign verify: pass
 spctl assess: pass for release; recorded for local development
 open MarkLook.app: pass
 pluginkit preview contains MarkLookPreview
+pluginkit preview exact bundle-id lookup contains MarkLookPreview when the provider-family query is incomplete
 pluginkit thumbnail provider list or thumbnail bundle-id lookup contains MarkLookThumbnail
 mdls Samples/basic.md reports a supported Markdown UTI
 qlmanage -p Samples/basic.md shows MarkLook rendered preview
@@ -140,10 +142,61 @@ security find-identity -p codesigning -v
 codesign --verify --deep --strict --verbose=4 .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
 spctl --assess --type execute --verbose=4 .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
 pluginkit -mAv -p com.apple.quicklook.preview | grep -i MarkLook
+pluginkit -mAv -i com.91wan.MarkLook.Preview
 pluginkit -mAv -p com.apple.quicklook.thumbnail | grep -i MarkLook
 pluginkit -mAv -i com.91wan.MarkLook.Thumbnail
 mdls -name kMDItemContentType Samples/basic.md
 qlmanage -m plugins | grep -i MarkLook
 ```
 
-If PlugInKit does not list MarkLook after a signed app launch and Quick Look reset, check the exact bundle-id lookup too. On some macOS versions, `pluginkit -mAv -p com.apple.quicklook.thumbnail` may be incomplete while `pluginkit -mAv -i com.91wan.MarkLook.Thumbnail` still proves the thumbnail extension is registered. If both forms miss MarkLook, keep Issue #11 open and attach the signing, `spctl`, PlugInKit, and System Settings evidence.
+If PlugInKit does not list MarkLook after a signed app launch and Quick Look reset, check the exact bundle-id lookup too. On some macOS versions, provider-family queries may be incomplete while an exact bundle-id lookup such as `pluginkit -mAv -i com.91wan.MarkLook.Preview` or `pluginkit -mAv -i com.91wan.MarkLook.Thumbnail` still proves the extension is registered. This does not prove Finder selected the provider. If both forms miss MarkLook, keep Issue #11 open and attach the signing, `spctl`, PlugInKit, and System Settings evidence.
+
+## Provider selection diagnostics
+
+When Finder Space still shows raw Markdown, run:
+
+```bash
+Scripts/diagnose-quicklook-selection.sh .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
+```
+
+The script records signature, PlugInKit, UTI, and `qlmanage -m plugins` output under `/tmp/marklook-quicklook-diagnostics-*`. It does not force extension enablement by default. To attempt local development enablement explicitly, run:
+
+```bash
+Scripts/diagnose-quicklook-selection.sh --enable .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
+```
+
+The script also records `pluginkit -mADv` output for all MarkLook registrations. If it reports MarkLook registrations outside the app bundle being tested, clear stale builds or test an installed app path before interpreting Finder provider selection.
+
+To detect whether the preview extension is invoked while pressing Space in Finder, run:
+
+```bash
+log stream --style compact --info --predicate 'subsystem == "com.91wan.MarkLook" || process CONTAINS "MarkLookPreview" || eventMessage CONTAINS "MarkLookPreview"'
+```
+
+Interpretation:
+
+```text
+No PreviewViewController logs:
+  MarkLookPreview is not being selected/invoked.
+  Investigate UTI, extension enablement, provider priority, and install location.
+
+PreviewViewController logs appear:
+  MarkLookPreview is invoked.
+  Investigate WKWebView view assignment, rendering output, or Quick Look view lifecycle.
+```
+
+DerivedData apps can behave differently from installed apps. To test install location locally:
+
+```bash
+rm -rf /Applications/MarkLook.app
+ditto .build/LocalDerivedData/Build/Products/Debug/MarkLook.app /Applications/MarkLook.app
+open /Applications/MarkLook.app
+qlmanage -r
+qlmanage -r cache
+killall Finder || true
+pluginkit -mAv -p com.apple.quicklook.preview | grep -i MarkLook
+pluginkit -mAv -i com.91wan.MarkLook.Preview
+open -R Samples/basic.md
+```
+
+Press Space in Finder and record whether installing to `/Applications` changes provider selection. Do not make `/Applications` installation part of CI.

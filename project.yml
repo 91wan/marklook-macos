@@ -166,6 +166,7 @@ targets:
         excludes:
           - Info.plist
           - PreviewExtension.entitlements
+      - path: Shared
     dependencies:
       - package: MarkdownCore
     info:
