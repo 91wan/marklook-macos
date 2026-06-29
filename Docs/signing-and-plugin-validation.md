@@ -22,7 +22,7 @@ Scripts/doctor-signing.sh
 security find-identity -p codesigning -v
 ```
 
-Then build and smoke test with the Team ID from Xcode or the identity output:
+Then build and smoke test with the Team ID from Xcode or the certificate OU candidate printed by `Scripts/doctor-signing.sh`:
 
 ```bash
 DEVELOPMENT_TEAM=<TEAM_ID> Scripts/build-local-apple-development.sh
