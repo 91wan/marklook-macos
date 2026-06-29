@@ -13,6 +13,7 @@
 ```bash
 xcodegen generate
 Scripts/validate-quicklook-preview-contract.sh
+Scripts/validate-thumbnail-boundaries.sh
 xcodebuild -project MarkLook.xcodeproj -scheme MarkLook -configuration Debug -derivedDataPath .build/DerivedData CODE_SIGNING_ALLOWED=NO test
 xcodebuild -project MarkLook.xcodeproj -scheme MarkLook -configuration Debug -derivedDataPath .build/DerivedData CODE_SIGNING_ALLOWED=NO build
 Scripts/validate-built-bundle.sh .build/DerivedData/Build/Products/Debug/MarkLook.app
@@ -22,9 +23,10 @@ Expected:
 
 - MarkLook.app builds.
 - Preview and Thumbnail app extensions are embedded in `Contents/PlugIns`.
-- MarkdownCore renderer tests and Preview extension contract tests pass.
+- MarkdownCore renderer tests, Preview extension contract tests, and Thumbnail extension metadata/renderer tests pass.
 - Bundle metadata validates.
 - The preview extension contract is data-based: `QLIsDataBasedPreview=true`, `PreviewViewController` uses `providePreview`, and PreviewExtension does not import WebKit or instantiate `WKWebView`.
+- The thumbnail extension contract is bounded: no WebKit, no MarkdownCore full render, and no unbounded full-file reads in ThumbnailExtension.
 
 ## Unsigned CI limitation
 
@@ -121,6 +123,7 @@ Record exact output when MarkLook is not selected. Prefer exact bundle-id lookup
 ## Thumbnail checks
 
 ```bash
+Scripts/validate-thumbnail-boundaries.sh
 qlmanage -r cache
 qlmanage -t -s 512 -o /tmp Samples/basic.md
 open /tmp/basic.md.png || true
@@ -128,9 +131,10 @@ open /tmp/basic.md.png || true
 
 Expected:
 
-- Thumbnail provider draws a static Markdown identity thumbnail when selected.
+- Thumbnail provider draws a Markdown identity thumbnail when selected.
+- The thumbnail shows an MD badge, the first H1/H2 heading when available, the file extension, and an approximate line count.
 - If macOS selects the system raw-text thumbnail, record PlugInKit/signing status.
-- Large files do not trigger full rendering.
+- Large files do not trigger full rendering or unbounded file reads.
 
 ## Reset Quick Look
 

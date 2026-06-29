@@ -7,6 +7,7 @@ Fast, stable, minimal macOS Quick Look Markdown preview for AI/developer long do
 - Provides a buildable macOS app with Quick Look preview and thumbnail extensions.
 - Provides a local MarkdownCore renderer for the v0.1 Markdown subset.
 - Renders Markdown previews through the local Preview extension.
+- Draws Markdown thumbnails from bounded file metadata: MD badge, first H1/H2 heading, extension, and approximate line count.
 - Targets `.md` files and long AI/Codex review documents.
 - Keeps rendering local.
 - No telemetry.
@@ -22,7 +23,7 @@ Fast, stable, minimal macOS Quick Look Markdown preview for AI/developer long do
 
 ## Current status
 
-The app and Quick Look extensions build. MarkdownCore provides a local safe HTML renderer for the v0.1 Markdown subset, and the Preview extension returns UTF-8 Markdown as data-based self-contained HTML without WebKit or network access. Local Apple Development validation has proved host-accepted app launch, PlugInKit Preview registration, and Finder Space rendered Markdown on the maintainer's Mac. Public distribution still requires Developer ID Application signing, hardened runtime, notarization, and stapling.
+The app and Quick Look extensions build. MarkdownCore provides a local safe HTML renderer for the v0.1 Markdown subset, the Preview extension returns UTF-8 Markdown as data-based self-contained HTML without WebKit or network access, and the Thumbnail extension contains a bounded Markdown identity renderer without full Markdown rendering. Local Apple Development validation has proved host-accepted app launch, PlugInKit Preview registration, and Finder Space rendered Markdown on the maintainer's Mac. Signed `qlmanage -t` thumbnail provider selection remains tracked in Issue #5. Public distribution still requires Developer ID Application signing, hardened runtime, notarization, and stapling.
 
 ## Build
 
