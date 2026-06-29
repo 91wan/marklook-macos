@@ -64,8 +64,9 @@ capture_all() {
 
 preview_plugins="$(mktemp)"
 thumbnail_plugins="$(mktemp)"
+thumbnail_bundle="$(mktemp)"
 signature_details="$(mktemp)"
-trap 'rm -f "$preview_plugins" "$thumbnail_plugins" "$signature_details"' EXIT
+trap 'rm -f "$preview_plugins" "$thumbnail_plugins" "$thumbnail_bundle" "$signature_details"' EXIT
 
 if [ "$mode" = "development" ]; then
   echo "WARNING: --development mode does not prove public distribution trust."
@@ -110,9 +111,11 @@ run killall Finder || true
 
 capture "$preview_plugins" pluginkit -mAv -p com.apple.quicklook.preview
 capture "$thumbnail_plugins" pluginkit -mAv -p com.apple.quicklook.thumbnail
+capture "$thumbnail_bundle" pluginkit -mAv -i com.91wan.MarkLook.Thumbnail
 
 grep -E 'MarkLookPreview|com\.91wan\.MarkLook\.Preview' "$preview_plugins"
-grep -E 'MarkLookThumbnail|com\.91wan\.MarkLook\.Thumbnail' "$thumbnail_plugins"
+grep -E 'MarkLookThumbnail|com\.91wan\.MarkLook\.Thumbnail' "$thumbnail_plugins" \
+  || grep -E 'MarkLookThumbnail|com\.91wan\.MarkLook\.Thumbnail' "$thumbnail_bundle"
 
 run mdls -name kMDItemContentType "$samples_dir/basic.md"
 run qlmanage -p "$samples_dir/basic.md"

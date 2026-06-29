@@ -73,6 +73,7 @@ qlmanage -r cache
 killall Finder || true
 pluginkit -mAv -p com.apple.quicklook.preview | grep -i MarkLook
 pluginkit -mAv -p com.apple.quicklook.thumbnail | grep -i MarkLook
+pluginkit -mAv -i com.91wan.MarkLook.Thumbnail
 mdls -name kMDItemContentType Samples/basic.md
 qlmanage -p Samples/basic.md
 qlmanage -p Samples/gfm-table-task-list.md
@@ -111,7 +112,7 @@ codesign verify: pass
 spctl assess: pass for release; recorded for local development
 open MarkLook.app: pass
 pluginkit preview contains MarkLookPreview
-pluginkit thumbnail contains MarkLookThumbnail
+pluginkit thumbnail provider list or thumbnail bundle-id lookup contains MarkLookThumbnail
 mdls Samples/basic.md reports a supported Markdown UTI
 qlmanage -p Samples/basic.md shows MarkLook rendered preview
 qlmanage -p Samples/gfm-table-task-list.md shows table and task-list rendering
@@ -140,8 +141,9 @@ codesign --verify --deep --strict --verbose=4 .build/LocalDerivedData/Build/Prod
 spctl --assess --type execute --verbose=4 .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
 pluginkit -mAv -p com.apple.quicklook.preview | grep -i MarkLook
 pluginkit -mAv -p com.apple.quicklook.thumbnail | grep -i MarkLook
+pluginkit -mAv -i com.91wan.MarkLook.Thumbnail
 mdls -name kMDItemContentType Samples/basic.md
 qlmanage -m plugins | grep -i MarkLook
 ```
 
-If PlugInKit does not list MarkLook after a signed app launch and Quick Look reset, keep Issue #11 open and attach the signing, `spctl`, PlugInKit, and System Settings evidence.
+If PlugInKit does not list MarkLook after a signed app launch and Quick Look reset, check the exact bundle-id lookup too. On some macOS versions, `pluginkit -mAv -p com.apple.quicklook.thumbnail` may be incomplete while `pluginkit -mAv -i com.91wan.MarkLook.Thumbnail` still proves the thumbnail extension is registered. If both forms miss MarkLook, keep Issue #11 open and attach the signing, `spctl`, PlugInKit, and System Settings evidence.
