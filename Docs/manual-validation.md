@@ -35,6 +35,30 @@ Unsigned or ad-hoc debug bundles may be rejected by AppleSystemPolicy, and PlugI
 
 Use a host-accepted signed build.
 
+### Local development validation with ordinary Apple ID / Personal Team
+
+Use this path for local Issue #11 validation before public release packaging exists.
+
+1. Open Xcode -> Settings -> Accounts and add the owner's Apple ID.
+2. Use Manage Certificates to create an Apple Development certificate.
+3. Run:
+
+```bash
+Scripts/doctor-signing.sh
+security find-identity -p codesigning -v
+DEVELOPMENT_TEAM=<TEAM_ID> Scripts/build-local-apple-development.sh
+Scripts/validate-signed-quicklook.sh --development .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
+```
+
+Expected signing facts:
+
+- Signature is not ad-hoc.
+- TeamIdentifier is set.
+- `--development` prints the public-distribution warning.
+- Public distribution still requires Developer ID Application, hardened runtime, notarization, and stapling.
+
+### Manual commands
+
 ```bash
 security find-identity -p codesigning -v
 xcodebuild -project MarkLook.xcodeproj -scheme MarkLook -configuration Debug -derivedDataPath .build/LocalDerivedData build
@@ -68,6 +92,7 @@ Expected signed-local results:
 ## Diagnose provider selection
 
 ```bash
+Scripts/doctor-signing.sh
 security find-identity -p codesigning -v
 spctl --assess --type execute --verbose=4 .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
 codesign --verify --deep --strict --verbose=4 .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
