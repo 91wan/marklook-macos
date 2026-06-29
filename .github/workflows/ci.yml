@@ -30,10 +30,12 @@ jobs:
           test -f Docs/adr/ADR-0003-security-model.md
           test -f MarkLookApp/Info.plist
           test -f PreviewExtensionTests/Info.plist
+          test -f ThumbnailExtensionTests/Info.plist
           test -f MarkLookApp/MarkLook.entitlements
           test -f Scripts/validate-supported-types.sh
           test -f Scripts/validate-built-bundle.sh
           test -f Scripts/validate-quicklook-preview-contract.sh
+          test -f Scripts/validate-thumbnail-boundaries.sh
           test -f Scripts/validate-renderer-security.sh
           test -f Scripts/validate-signed-quicklook.sh
           test -f Scripts/build-local-apple-development.sh
@@ -42,6 +44,7 @@ jobs:
         run: |
           plutil -lint MarkLookApp/Info.plist
           plutil -lint PreviewExtensionTests/Info.plist
+          plutil -lint ThumbnailExtensionTests/Info.plist
           plutil -lint MarkLookApp/MarkLook.entitlements
           plutil -lint PreviewExtension/Info.plist
           plutil -lint PreviewExtension/PreviewExtension.entitlements
@@ -52,6 +55,7 @@ jobs:
           /usr/libexec/PlistBuddy -c 'Print :com.apple.security.app-sandbox' ThumbnailExtension/ThumbnailExtension.entitlements | grep -q true
           Scripts/validate-supported-types.sh
           Scripts/validate-quicklook-preview-contract.sh
+          Scripts/validate-thumbnail-boundaries.sh
           ! grep -R "com.apple.security.network.client" . --include="*.entitlements"
           ! grep -R "public.plain-text" PreviewExtension ThumbnailExtension
       - name: Validate shell scripts
@@ -63,6 +67,7 @@ jobs:
           sh -n Scripts/validate-supported-types.sh
           sh -n Scripts/validate-built-bundle.sh
           sh -n Scripts/validate-quicklook-preview-contract.sh
+          sh -n Scripts/validate-thumbnail-boundaries.sh
           sh -n Scripts/validate-renderer-security.sh
           sh -n Scripts/validate-signed-quicklook.sh
           sh -n Scripts/build-local-apple-development.sh
@@ -73,6 +78,8 @@ jobs:
         run: Tests/Scripts/quicklook-preview-contract-test.sh
       - name: Validate signed Quick Look script modes
         run: Tests/Scripts/validate-signed-quicklook-mode-test.sh
+      - name: Validate thumbnail boundaries
+        run: Scripts/validate-thumbnail-boundaries.sh
       - name: Check whitespace
         run: git diff --check
       - name: Install XcodeGen
@@ -83,14 +90,13 @@ jobs:
         run: xcodegen generate
       - name: List Xcode project
         run: xcodebuild -project MarkLook.xcodeproj -list
-      - name: Test MarkLook preview extension
+      - name: Test MarkLook extensions
         run: |
           xcodebuild \
             -project MarkLook.xcodeproj \
             -scheme MarkLook \
             -configuration Debug \
             -derivedDataPath .build/DerivedData \
-            -only-testing:MarkLookPreviewTests \
             CODE_SIGNING_ALLOWED=NO \
             test
       - name: Build MarkLook

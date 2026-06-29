@@ -37,6 +37,20 @@ targets:
         CFBundlePackageType: APPL
         CFBundleShortVersionString: "0.1.0"
         CFBundleVersion: "1"
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Markdown Document
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - net.daringfireball.markdown
+              - public.markdown
+              - net.ia.markdown
+              - io.typora.markdown
+              - com.unknown.md
+              - net.daringfireball
+              - com.apple.dt.document.markdown
+              - com.rstudio.rmarkdown
+              - org.quarto.qmarkdown
         LSApplicationCategoryType: public.app-category.developer-tools
         LSMinimumSystemVersion: "$(MACOSX_DEPLOYMENT_TARGET)"
         NSHumanReadableCopyright: "Copyright © 2026 MarkLook contributors. MIT License."
@@ -176,6 +190,24 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.91wan.MarkLook.PreviewTests
         PRODUCT_NAME: MarkLookPreviewTests
         APPLICATION_EXTENSION_API_ONLY: YES
+
+  MarkLookThumbnailTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: ThumbnailExtensionTests
+      - path: ThumbnailExtension
+        excludes:
+          - Info.plist
+          - ThumbnailExtension.entitlements
+    info:
+      path: ThumbnailExtensionTests/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.91wan.MarkLook.ThumbnailTests
+        PRODUCT_NAME: MarkLookThumbnailTests
+        APPLICATION_EXTENSION_API_ONLY: YES
 schemes:
   MarkLook:
     build:
@@ -184,6 +216,8 @@ schemes:
         MarkLookPreview: all
         MarkLookThumbnail: all
         MarkLookPreviewTests: [test]
+        MarkLookThumbnailTests: [test]
     test:
       targets:
         - MarkLookPreviewTests
+        - MarkLookThumbnailTests
