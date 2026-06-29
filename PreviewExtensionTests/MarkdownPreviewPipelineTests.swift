@@ -1,6 +1,19 @@
 import XCTest
 
 final class MarkdownPreviewPipelineTests: XCTestCase {
+    func testValidMarkdownReturnsHTMLDocumentPreview() throws {
+        let url = try writeTempFile(named: "valid.md", bytes: Array("# Title\n\nBody".utf8))
+        let pipeline = MarkdownPreviewPipeline()
+
+        let preview = pipeline.preview(for: url)
+
+        guard case let .htmlDocument(html) = preview else {
+            return XCTFail("Expected HTML document preview, got \(preview)")
+        }
+        XCTAssertTrue(html.contains("<h1 id=\"title\">Title</h1>"))
+        XCTAssertTrue(html.contains("Body"))
+    }
+
     func testLoaderErrorReturnsLocalErrorPreview() throws {
         let url = try writeTempFile(named: "invalid.md", bytes: [0xFF, 0xFE, 0xFD])
         let pipeline = MarkdownPreviewPipeline()

@@ -151,9 +151,9 @@ qlmanage -m plugins | grep -i MarkLook
 
 If PlugInKit does not list MarkLook after a signed app launch and Quick Look reset, check the exact bundle-id lookup too. On some macOS versions, provider-family queries may be incomplete while an exact bundle-id lookup such as `pluginkit -mAv -i com.91wan.MarkLook.Preview` or `pluginkit -mAv -i com.91wan.MarkLook.Thumbnail` still proves the extension is registered. This does not prove Finder selected the provider. If both forms miss MarkLook, keep Issue #11 open and attach the signing, `spctl`, PlugInKit, and System Settings evidence.
 
-## View-based preview contract
+## Data-based preview contract
 
-MarkLookPreview is view-based in v0.1. `PreviewViewController` owns an `NSView`/`WKWebView` and implements `preparePreviewOfFile(at:completionHandler:)`. Therefore the preview extension must not declare `QLIsDataBasedPreview=true`.
+MarkLookPreview is data-based in v0.1. `PreviewViewController` subclasses `QLPreviewProvider`, implements `providePreview(for:completionHandler:)`, and returns self-contained HTML through `QLPreviewReply`. Therefore the preview extension must declare `QLIsDataBasedPreview=true` and must not embed WebKit or implement `preparePreviewOfFile`.
 
 Run this guard before signed runtime validation:
 
@@ -167,7 +167,7 @@ After building, validate the generated app extension plist too:
 Scripts/validate-quicklook-preview-contract.sh .build/DerivedData/Build/Products/Debug/MarkLook.app
 ```
 
-If `QLIsDataBasedPreview` becomes true later, the preview controller must deliberately move to the data-based Quick Look provider API in the same design change. Do not mix the data-based plist flag with the view/file-based controller.
+Do not mix the data-based plist flag with the view/file-based controller API. A contract violation should block signed runtime validation.
 
 ## Provider selection diagnostics
 
@@ -200,7 +200,7 @@ No PreviewViewController logs:
 
 PreviewViewController logs appear:
   MarkLookPreview is invoked.
-  Investigate WKWebView view assignment, rendering output, or Quick Look view lifecycle.
+  Investigate `providePreview` reply creation, rendered HTML output, or Quick Look data-based rendering.
 ```
 
 DerivedData apps can behave differently from installed apps. To test install location locally:

@@ -22,9 +22,9 @@ Expected:
 
 - MarkLook.app builds.
 - Preview and Thumbnail app extensions are embedded in `Contents/PlugIns`.
-- MarkdownCore renderer tests and Preview extension policy tests pass.
+- MarkdownCore renderer tests and Preview extension contract tests pass.
 - Bundle metadata validates.
-- The preview extension contract is view-based: `QLIsDataBasedPreview` is absent or false, and `PreviewViewController` uses `preparePreviewOfFile`.
+- The preview extension contract is data-based: `QLIsDataBasedPreview=true`, `PreviewViewController` uses `providePreview`, and PreviewExtension does not import WebKit or instantiate `WKWebView`.
 
 ## Unsigned CI limitation
 
@@ -89,7 +89,7 @@ Expected signed-local results:
 - `long-ai-review.md` opens without a blank white view.
 - `unsafe-html.md` shows escaped/safe text; scripts do not execute.
 - Remote images show blocked placeholders.
-- Markdown links are visually inert and do not navigate.
+- Markdown links are sanitized so they do not navigate or load remote resources.
 - `large-fast-mode.md` shows the fast mode warning and does not hang Finder.
 - If macOS selects the system raw-text provider, record PlugInKit/signing status and keep Issue #4 open.
 

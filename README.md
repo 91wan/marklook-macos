@@ -22,7 +22,7 @@ Fast, stable, minimal macOS Quick Look Markdown preview for AI/developer long do
 
 ## Current status
 
-The app and Quick Look extensions build. MarkdownCore provides a local safe HTML renderer for the v0.1 Markdown subset, and the Preview extension renders UTF-8 Markdown through a non-persistent WebKit view with navigation blocked. Signed PlugInKit registration remains tracked in Issue #11.
+The app and Quick Look extensions build. MarkdownCore provides a local safe HTML renderer for the v0.1 Markdown subset, and the Preview extension returns UTF-8 Markdown as data-based self-contained HTML without WebKit or network access. Signed PlugInKit registration remains tracked in Issue #11.
 
 ## Build
 
