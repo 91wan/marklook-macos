@@ -12,6 +12,7 @@
 
 ```bash
 xcodegen generate
+Scripts/validate-quicklook-preview-contract.sh
 xcodebuild -project MarkLook.xcodeproj -scheme MarkLook -configuration Debug -derivedDataPath .build/DerivedData CODE_SIGNING_ALLOWED=NO test
 xcodebuild -project MarkLook.xcodeproj -scheme MarkLook -configuration Debug -derivedDataPath .build/DerivedData CODE_SIGNING_ALLOWED=NO build
 Scripts/validate-built-bundle.sh .build/DerivedData/Build/Products/Debug/MarkLook.app
@@ -23,6 +24,7 @@ Expected:
 - Preview and Thumbnail app extensions are embedded in `Contents/PlugIns`.
 - MarkdownCore renderer tests and Preview extension policy tests pass.
 - Bundle metadata validates.
+- The preview extension contract is view-based: `QLIsDataBasedPreview` is absent or false, and `PreviewViewController` uses `preparePreviewOfFile`.
 
 ## Unsigned CI limitation
 
@@ -69,6 +71,7 @@ qlmanage -r
 qlmanage -r cache
 killall Finder || true
 pluginkit -mAv -p com.apple.quicklook.preview | grep -i MarkLook
+pluginkit -mAv -i com.91wan.MarkLook.Preview
 pluginkit -mAv -p com.apple.quicklook.thumbnail | grep -i MarkLook
 pluginkit -mAv -i com.91wan.MarkLook.Thumbnail
 mdls -name kMDItemContentType Samples/basic.md
@@ -98,6 +101,7 @@ security find-identity -p codesigning -v
 spctl --assess --type execute --verbose=4 .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
 codesign --verify --deep --strict --verbose=4 .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
 pluginkit -mAv -p com.apple.quicklook.preview | grep -i MarkLook
+pluginkit -mAv -i com.91wan.MarkLook.Preview
 pluginkit -mAv -p com.apple.quicklook.thumbnail | grep -i MarkLook
 pluginkit -mAv -i com.91wan.MarkLook.Thumbnail
 mdls -name kMDItemContentType Samples/basic.md

@@ -28,6 +28,8 @@ Use this checklist for every pull request.
 
 - Preview extension changes include rendered preview validation when relevant.
 - Thumbnail extension changes include thumbnail validation when relevant.
+- Preview extension stays view-based for v0.1: `PreviewViewController` implements `preparePreviewOfFile`, and `QLIsDataBasedPreview` must not be true.
+- If `QLIsDataBasedPreview` is introduced later, the controller API must move deliberately to the data-based provider path in the same design change.
 - `QLSupportedContentTypes` changes avoid `public.plain-text`.
 - Cache reset commands are documented when behavior changes.
 

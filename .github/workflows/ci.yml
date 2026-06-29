@@ -33,6 +33,7 @@ jobs:
           test -f MarkLookApp/MarkLook.entitlements
           test -f Scripts/validate-supported-types.sh
           test -f Scripts/validate-built-bundle.sh
+          test -f Scripts/validate-quicklook-preview-contract.sh
           test -f Scripts/validate-renderer-security.sh
           test -f Scripts/validate-signed-quicklook.sh
           test -f Scripts/build-local-apple-development.sh
@@ -50,6 +51,7 @@ jobs:
           /usr/libexec/PlistBuddy -c 'Print :com.apple.security.app-sandbox' PreviewExtension/PreviewExtension.entitlements | grep -q true
           /usr/libexec/PlistBuddy -c 'Print :com.apple.security.app-sandbox' ThumbnailExtension/ThumbnailExtension.entitlements | grep -q true
           Scripts/validate-supported-types.sh
+          Scripts/validate-quicklook-preview-contract.sh
           ! grep -R "com.apple.security.network.client" . --include="*.entitlements"
           ! grep -R "public.plain-text" PreviewExtension ThumbnailExtension
       - name: Validate shell scripts
@@ -60,10 +62,14 @@ jobs:
           sh -n Scripts/package-debug.sh
           sh -n Scripts/validate-supported-types.sh
           sh -n Scripts/validate-built-bundle.sh
+          sh -n Scripts/validate-quicklook-preview-contract.sh
           sh -n Scripts/validate-renderer-security.sh
           sh -n Scripts/validate-signed-quicklook.sh
           sh -n Scripts/build-local-apple-development.sh
           sh -n Scripts/doctor-signing.sh
+          sh -n Tests/Scripts/quicklook-preview-contract-test.sh
+      - name: Validate Quick Look preview contract
+        run: Tests/Scripts/quicklook-preview-contract-test.sh
       - name: Check whitespace
         run: git diff --check
       - name: Install XcodeGen

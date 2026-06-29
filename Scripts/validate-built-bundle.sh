@@ -7,6 +7,9 @@ if [ -z "$app" ]; then
   exit 64
 fi
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+repo_root="$(cd "$script_dir/.." && pwd -P)"
+
 preview="$app/Contents/PlugIns/MarkLookPreview.appex"
 thumbnail="$app/Contents/PlugIns/MarkLookThumbnail.appex"
 
@@ -17,6 +20,8 @@ test -d "$thumbnail"
 plutil -lint "$app/Contents/Info.plist"
 plutil -lint "$preview/Contents/Info.plist"
 plutil -lint "$thumbnail/Contents/Info.plist"
+
+"$repo_root/Scripts/validate-quicklook-preview-contract.sh" "$app"
 
 /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist" | grep -q '^com.91wan.MarkLook$'
 /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$preview/Contents/Info.plist" | grep -q '^com.91wan.MarkLook.Preview$'
