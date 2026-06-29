@@ -2,7 +2,7 @@
 
 MarkLook is only useful after macOS accepts the signed app bundle and PlugInKit selects the bundled Quick Look extensions. CI can prove build, embedding, and unit tests; it cannot prove Finder Space-key behavior.
 
-This tooling supports Issue #11 evidence collection only. It does not satisfy Issue #11 by itself; Issue #11 remains open until real host-accepted signed runtime evidence is attached.
+This tooling supports signed runtime evidence collection. Local Apple Development validation has proved host-accepted app launch, PlugInKit Preview registration, and Finder Space rendered Markdown on the maintainer's Mac. Public distribution still requires Developer ID Application signing, hardened runtime, notarization, and stapling.
 
 ## Build a signed app
 
@@ -26,7 +26,7 @@ Then build and smoke test with the Team ID from Xcode or the certificate OU cand
 
 ```bash
 DEVELOPMENT_TEAM=<TEAM_ID> Scripts/build-local-apple-development.sh
-Scripts/validate-signed-quicklook.sh --development .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
+Scripts/validate-signed-quicklook.sh --development --noninteractive .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
 ```
 
 `--development` still rejects ad-hoc signatures and missing TeamIdentifier values. It records `spctl --assess`; if `spctl` rejects an Apple Development build, the script may continue only after proving the signature is non-ad-hoc and has a TeamIdentifier. This mode is for local development validation only.
@@ -55,13 +55,14 @@ Do not use ad-hoc signing as PlugInKit proof. Ad-hoc signing may satisfy a narro
 ## Run signed Quick Look smoke
 
 ```bash
-Scripts/validate-signed-quicklook.sh --development .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
-Scripts/validate-signed-quicklook.sh --release .build/LocalDerivedData/Build/Products/Release/MarkLook.app
+Scripts/validate-signed-quicklook.sh --development --noninteractive .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
+Scripts/validate-signed-quicklook.sh --development --interactive-preview .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
+Scripts/validate-signed-quicklook.sh --release --noninteractive .build/LocalDerivedData/Build/Products/Release/MarkLook.app
 ```
 
-Without a mode flag, the script defaults to `--release`.
+The script requires one interaction mode. Use `--noninteractive` for unattended signed smoke evidence. Use `--interactive-preview` only when someone can close the `qlmanage -p` preview windows manually.
 
-The script runs:
+Both interaction modes run:
 
 ```bash
 codesign --verify --deep --strict --verbose=4 "$APP"
@@ -76,12 +77,17 @@ pluginkit -mAv -i com.91wan.MarkLook.Preview
 pluginkit -mAv -p com.apple.quicklook.thumbnail | grep -i MarkLook
 pluginkit -mAv -i com.91wan.MarkLook.Thumbnail
 mdls -name kMDItemContentType Samples/basic.md
+qlmanage -t -s 512 -o /tmp Samples/basic.md
+```
+
+`--interactive-preview` additionally runs:
+
+```bash
 qlmanage -p Samples/basic.md
 qlmanage -p Samples/gfm-table-task-list.md
 qlmanage -p Samples/long-ai-review.md
 qlmanage -p Samples/unsafe-html.md
 qlmanage -p Samples/large-fast-mode.md
-qlmanage -t -s 512 -o /tmp Samples/basic.md
 ```
 
 `qlmanage -p` opens preview UI. Close each preview window to let the script continue.
@@ -149,7 +155,7 @@ mdls -name kMDItemContentType Samples/basic.md
 qlmanage -m plugins | grep -i MarkLook
 ```
 
-If PlugInKit does not list MarkLook after a signed app launch and Quick Look reset, check the exact bundle-id lookup too. On some macOS versions, provider-family queries may be incomplete while an exact bundle-id lookup such as `pluginkit -mAv -i com.91wan.MarkLook.Preview` or `pluginkit -mAv -i com.91wan.MarkLook.Thumbnail` still proves the extension is registered. This does not prove Finder selected the provider. If both forms miss MarkLook, keep Issue #11 open and attach the signing, `spctl`, PlugInKit, and System Settings evidence.
+If PlugInKit does not list MarkLook after a signed app launch and Quick Look reset, check the exact bundle-id lookup too. On some macOS versions, provider-family queries may be incomplete while an exact bundle-id lookup such as `pluginkit -mAv -i com.91wan.MarkLook.Preview` or `pluginkit -mAv -i com.91wan.MarkLook.Thumbnail` still proves the extension is registered. This does not prove Finder selected the provider. If both forms miss MarkLook, do not claim a signed runtime pass; attach the signing, `spctl`, PlugInKit, and System Settings evidence to the affected gate.
 
 ## Data-based preview contract
 

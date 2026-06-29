@@ -59,7 +59,7 @@ if [ -n "$apple_development_line" ]; then
   echo
   echo "After build, verify:"
   echo "codesign -dv --verbose=4 .build/LocalDerivedData/Build/Products/Debug/MarkLook.app"
-  echo "Scripts/validate-signed-quicklook.sh --development .build/LocalDerivedData/Build/Products/Debug/MarkLook.app"
+  echo "Scripts/validate-signed-quicklook.sh --development --noninteractive .build/LocalDerivedData/Build/Products/Debug/MarkLook.app"
 fi
 
 if [ -n "$developer_id_line" ]; then

@@ -2,31 +2,73 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: Scripts/validate-signed-quicklook.sh [--development|--release] /path/to/MarkLook.app" >&2
+  cat >&2 <<'EOF'
+usage: Scripts/validate-signed-quicklook.sh [--development|--release] (--noninteractive|--interactive-preview) /path/to/MarkLook.app
+
+Modes:
+  --noninteractive       Run signing, app launch, PlugInKit, mdls, and thumbnail checks. Do not open qlmanage preview windows.
+  --interactive-preview  Run the noninteractive checks plus qlmanage -p for the required sample files. Preview windows must be closed manually.
+EOF
 }
 
-mode="release"
-if [ "$#" -eq 2 ]; then
+signing_mode="release"
+interaction_mode=""
+app=""
+
+while [ "$#" -gt 0 ]; do
   case "$1" in
     --development)
-      mode="development"
-      shift
+      signing_mode="development"
       ;;
     --release)
-      mode="release"
-      shift
+      signing_mode="release"
       ;;
-    *)
+    --noninteractive)
+      if [ -n "$interaction_mode" ]; then
+        echo "error: choose exactly one interaction mode" >&2
+        usage
+        exit 64
+      fi
+      interaction_mode="noninteractive"
+      ;;
+    --interactive-preview)
+      if [ -n "$interaction_mode" ]; then
+        echo "error: choose exactly one interaction mode" >&2
+        usage
+        exit 64
+      fi
+      interaction_mode="interactive-preview"
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --*)
       usage
       exit 64
       ;;
+    *)
+      if [ -n "$app" ]; then
+        usage
+        exit 64
+      fi
+      app="$1"
+      ;;
   esac
-elif [ "$#" -ne 1 ]; then
+  shift
+done
+
+if [ -z "$interaction_mode" ]; then
+  echo "error: choose --noninteractive or --interactive-preview" >&2
   usage
   exit 64
 fi
 
-app="$1"
+if [ -z "$app" ]; then
+  usage
+  exit 64
+fi
+
 if [ ! -d "$app" ]; then
   echo "error: app bundle not found: $app" >&2
   exit 66
@@ -34,7 +76,9 @@ fi
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 repo_root="$(cd "$script_dir/.." && pwd -P)"
-samples_dir="$repo_root/Samples"
+samples_dir="${MARKLOOK_VALIDATE_SIGNED_SAMPLES_DIR:-$repo_root/Samples}"
+bundle_validator="${MARKLOOK_VALIDATE_SIGNED_BUNDLE_COMMAND:-$repo_root/Scripts/validate-built-bundle.sh}"
+sleep_seconds="${MARKLOOK_VALIDATE_SIGNED_SLEEP_SECONDS:-2}"
 app="$(cd "$(dirname "$app")" && pwd -P)/$(basename "$app")"
 
 run() {
@@ -69,7 +113,7 @@ thumbnail_bundle="$(mktemp)"
 signature_details="$(mktemp)"
 trap 'rm -f "$preview_plugins" "$preview_bundle" "$thumbnail_plugins" "$thumbnail_bundle" "$signature_details"' EXIT
 
-if [ "$mode" = "development" ]; then
+if [ "$signing_mode" = "development" ]; then
   echo "WARNING: --development mode does not prove public distribution trust."
   echo "Developer ID + notarization + stapling remain required for release."
 fi
@@ -80,7 +124,7 @@ test -f "$samples_dir/long-ai-review.md"
 test -f "$samples_dir/unsafe-html.md"
 test -f "$samples_dir/large-fast-mode.md"
 
-run "$repo_root/Scripts/validate-built-bundle.sh" "$app"
+run "$bundle_validator" "$app"
 run codesign --verify --deep --strict --verbose=4 "$app"
 capture_all "$signature_details" codesign -dv --verbose=4 "$app"
 
@@ -94,7 +138,7 @@ if ! grep -Eq '^TeamIdentifier=[^[:space:]]+' "$signature_details" || grep -q '^
   exit 65
 fi
 
-if [ "$mode" = "release" ]; then
+if [ "$signing_mode" = "release" ]; then
   run spctl --assess --type execute --verbose=4 "$app"
 else
   if run spctl --assess --type execute --verbose=4 "$app"; then
@@ -105,7 +149,7 @@ else
   fi
 fi
 run open "$app"
-sleep 2
+sleep "$sleep_seconds"
 run qlmanage -r
 run qlmanage -r cache
 run killall Finder || true
@@ -121,11 +165,19 @@ grep -E 'MarkLookThumbnail|com\.91wan\.MarkLook\.Thumbnail' "$thumbnail_plugins"
   || grep -E 'MarkLookThumbnail|com\.91wan\.MarkLook\.Thumbnail' "$thumbnail_bundle"
 
 run mdls -name kMDItemContentType "$samples_dir/basic.md"
-run qlmanage -p "$samples_dir/basic.md"
-run qlmanage -p "$samples_dir/gfm-table-task-list.md"
-run qlmanage -p "$samples_dir/long-ai-review.md"
-run qlmanage -p "$samples_dir/unsafe-html.md"
-run qlmanage -p "$samples_dir/large-fast-mode.md"
+
+if [ "$interaction_mode" = "interactive-preview" ]; then
+  echo "interactive preview checks: enabled"
+  echo "Close each Quick Look preview window manually so qlmanage can continue."
+  run qlmanage -p "$samples_dir/basic.md"
+  run qlmanage -p "$samples_dir/gfm-table-task-list.md"
+  run qlmanage -p "$samples_dir/long-ai-review.md"
+  run qlmanage -p "$samples_dir/unsafe-html.md"
+  run qlmanage -p "$samples_dir/large-fast-mode.md"
+else
+  echo "interactive preview checks: skipped (--noninteractive)"
+fi
+
 run qlmanage -t -s 512 -o /tmp "$samples_dir/basic.md"
 
 echo "thumbnail output should be at /tmp/basic.md.png when MarkLookThumbnail is selected"

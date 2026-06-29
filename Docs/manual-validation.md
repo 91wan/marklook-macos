@@ -39,7 +39,7 @@ Use a host-accepted signed build.
 
 ### Local development validation with ordinary Apple ID / Personal Team
 
-Use this path for local Issue #11 validation before public release packaging exists.
+Use this path for local signed runtime validation before public release packaging exists.
 
 1. Open Xcode -> Settings -> Accounts and add the owner's Apple ID.
 2. Use Manage Certificates to create an Apple Development certificate.
@@ -49,7 +49,7 @@ Use this path for local Issue #11 validation before public release packaging exi
 Scripts/doctor-signing.sh
 security find-identity -p codesigning -v
 DEVELOPMENT_TEAM=<TEAM_ID> Scripts/build-local-apple-development.sh
-Scripts/validate-signed-quicklook.sh --development .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
+Scripts/validate-signed-quicklook.sh --development --noninteractive .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
 ```
 
 Expected signing facts:
@@ -57,7 +57,16 @@ Expected signing facts:
 - Signature is not ad-hoc.
 - TeamIdentifier is set.
 - `--development` prints the public-distribution warning.
+- `--noninteractive` skips `qlmanage -p` and remains safe for unattended signed smoke.
 - Public distribution still requires Developer ID Application, hardened runtime, notarization, and stapling.
+
+For interactive preview-window validation, run:
+
+```bash
+Scripts/validate-signed-quicklook.sh --development --interactive-preview .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
+```
+
+Close each `qlmanage -p` preview window manually so the script can continue.
 
 ### Manual commands
 
