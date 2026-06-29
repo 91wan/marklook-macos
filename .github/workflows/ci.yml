@@ -68,8 +68,11 @@ jobs:
           sh -n Scripts/build-local-apple-development.sh
           sh -n Scripts/doctor-signing.sh
           sh -n Tests/Scripts/quicklook-preview-contract-test.sh
+          sh -n Tests/Scripts/validate-signed-quicklook-mode-test.sh
       - name: Validate Quick Look preview contract
         run: Tests/Scripts/quicklook-preview-contract-test.sh
+      - name: Validate signed Quick Look script modes
+        run: Tests/Scripts/validate-signed-quicklook-mode-test.sh
       - name: Check whitespace
         run: git diff --check
       - name: Install XcodeGen

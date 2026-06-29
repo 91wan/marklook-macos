@@ -22,7 +22,7 @@ Fast, stable, minimal macOS Quick Look Markdown preview for AI/developer long do
 
 ## Current status
 
-The app and Quick Look extensions build. MarkdownCore provides a local safe HTML renderer for the v0.1 Markdown subset, and the Preview extension returns UTF-8 Markdown as data-based self-contained HTML without WebKit or network access. Signed PlugInKit registration remains tracked in Issue #11.
+The app and Quick Look extensions build. MarkdownCore provides a local safe HTML renderer for the v0.1 Markdown subset, and the Preview extension returns UTF-8 Markdown as data-based self-contained HTML without WebKit or network access. Local Apple Development validation has proved host-accepted app launch, PlugInKit Preview registration, and Finder Space rendered Markdown on the maintainer's Mac. Public distribution still requires Developer ID Application signing, hardened runtime, notarization, and stapling.
 
 ## Build
 
@@ -56,7 +56,7 @@ security find-identity -p codesigning -v
 
 ```bash
 DEVELOPMENT_TEAM=<TEAM_ID> Scripts/build-local-apple-development.sh
-Scripts/validate-signed-quicklook.sh --development .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
+Scripts/validate-signed-quicklook.sh --development --noninteractive .build/LocalDerivedData/Build/Products/Debug/MarkLook.app
 ```
 
 Development mode still rejects ad-hoc signatures and missing TeamIdentifier values. It does not prove public distribution trust. Public distribution requires Developer ID Application signing, hardened runtime, notarization, and stapling.
