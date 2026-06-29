@@ -11,7 +11,7 @@ if [ "$#" -gt 1 ]; then
 fi
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-repo_root="$(cd "$script_dir/.." && pwd -P)"
+repo_root="${MARKLOOK_PREVIEW_CONTRACT_REPO_ROOT:-$(cd "$script_dir/.." && pwd -P)}"
 
 validate_preview_info() {
   info_plist="$1"
@@ -26,21 +26,36 @@ validate_preview_info() {
     grep -q 'PreviewViewController'
 
   data_based="$(mktemp)"
-  if /usr/libexec/PlistBuddy -c 'Print :NSExtension:NSExtensionAttributes:QLIsDataBasedPreview' "$info_plist" >"$data_based" 2>/dev/null; then
-    if grep -Eiq '^(true|yes|1)$' "$data_based"; then
-      echo "error: $label declares QLIsDataBasedPreview=true but uses view-based PreviewViewController" >&2
-      rm -f "$data_based"
-      exit 1
-    fi
+  if ! /usr/libexec/PlistBuddy -c 'Print :NSExtension:NSExtensionAttributes:QLIsDataBasedPreview' "$info_plist" >"$data_based" 2>/dev/null; then
+    echo "error: $label must declare QLIsDataBasedPreview=true for data-based previews" >&2
+    rm -f "$data_based"
+    exit 1
+  fi
+  if ! grep -Eiq '^(true|yes|1)$' "$data_based"; then
+    echo "error: $label must declare QLIsDataBasedPreview=true for data-based previews" >&2
+    rm -f "$data_based"
+    exit 1
   fi
   rm -f "$data_based"
 }
 
 validate_preview_info "$repo_root/PreviewExtension/Info.plist" "PreviewExtension/Info.plist"
 
-grep -R "preparePreviewOfFile" "$repo_root/PreviewExtension" >/dev/null
-if grep -R "providePreview" "$repo_root/PreviewExtension" >/dev/null; then
-  echo "error: PreviewExtension implements a data-based providePreview path; v0.1 must stay view-based" >&2
+preview_source_dir="$repo_root/PreviewExtension"
+test -d "$preview_source_dir"
+
+if ! grep -R "providePreview" "$preview_source_dir" >/dev/null; then
+  echo "error: PreviewExtension declares QLIsDataBasedPreview=true but does not implement providePreview" >&2
+  exit 1
+fi
+
+if grep -R "preparePreviewOfFile" "$preview_source_dir" >/dev/null; then
+  echo "error: PreviewExtension must not implement view-based preparePreviewOfFile in data-based mode" >&2
+  exit 1
+fi
+
+if grep -R -E "import[[:space:]]+WebKit|WKWebView" "$preview_source_dir" >/dev/null; then
+  echo "error: PreviewExtension must not import WebKit or instantiate WKWebView" >&2
   exit 1
 fi
 

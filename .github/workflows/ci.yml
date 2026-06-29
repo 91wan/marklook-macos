@@ -113,9 +113,11 @@ jobs:
           Scripts/validate-renderer-security.sh /tmp/marklook-renderer-safe.html
       - name: Validate preview rendering boundaries
         run: |
-          ! git grep -n "import WebKit" -- Packages/MarkdownCore Shared ThumbnailExtension MarkLookApp
+          ! git grep -n "import WebKit" -- MarkLookApp PreviewExtension ThumbnailExtension Shared Packages/MarkdownCore
+          ! git grep -n "WKWebView" -- MarkLookApp PreviewExtension ThumbnailExtension Shared Packages/MarkdownCore
           ! git grep -n "import AppKit" -- Packages/MarkdownCore
-          git grep -n "import WebKit" -- PreviewExtension
+          git grep -n "providePreview" -- PreviewExtension/PreviewViewController.swift
+          ! git grep -n "preparePreviewOfFile" -- PreviewExtension
           ! git grep -n "allowRawHTML" -- MarkLookApp PreviewExtension ThumbnailExtension Shared Packages/MarkdownCore Scripts project.yml
           ! git grep -n "allowRemoteResources" -- MarkLookApp PreviewExtension ThumbnailExtension Shared Packages/MarkdownCore Scripts project.yml
           ! git grep -n "Data(contentsOf:" -- PreviewExtension

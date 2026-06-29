@@ -80,6 +80,7 @@ targets:
         CFBundleVersion: "1"
         NSExtension:
           NSExtensionAttributes:
+            QLIsDataBasedPreview: true
             QLSupportedContentTypes:
               - net.daringfireball.markdown
               - public.markdown

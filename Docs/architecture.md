@@ -19,10 +19,10 @@ file URL
   -> MarkdownFileLoader
   -> MarkdownCore.Renderer
   -> safe self-contained HTML string
-  -> WKWebView.loadHTMLString(_:baseURL:nil)
+  -> QLPreviewReply(dataOfContentType: .html)
 ```
 
-The preview extension must treat WKWebView as a local HTML display surface, not as a browser.
+The preview extension is data-based. It returns self-contained HTML to Quick Look and must not embed WebKit, add network entitlements, or behave like a browser.
 
 ## Product boundary
 
@@ -37,7 +37,7 @@ Preview rendering is local-only:
 - no remote assets
 - no CDN
 - no raw script execution
-- no navigation inside Quick Look
+- no WebKit navigation surface inside the preview extension
 - no writes from the preview extension
 
 ## Content types

@@ -1,7 +1,7 @@
 import Foundation
 
 enum MarkdownPreviewContent: Equatable {
-    case webHTML(String)
+    case htmlDocument(String)
     case error(title: String, message: String)
 }
 
@@ -31,7 +31,7 @@ struct MarkdownPreviewPipeline {
             onEvent(.loadedDocument)
             let rendered = try renderer.render(document)
             onEvent(.renderedHTML)
-            return .webHTML(rendered.html)
+            return .htmlDocument(rendered.html)
         } catch {
             return .error(title: "Preview unavailable", message: error.localizedDescription)
         }

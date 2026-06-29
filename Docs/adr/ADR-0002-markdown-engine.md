@@ -16,7 +16,7 @@ Reasons:
 
 - The current CI runner builds with Xcode 16.4. `swiftlang/swift-markdown` main currently requires a newer Swift tools version than this project can assume, so pinning main is not acceptable.
 - cmark-gfm wrappers add C dependency and app-extension compatibility questions that should not block a safe renderer baseline.
-- MarkLook needs a deterministic, testable security policy before Finder/WebKit integration.
+- MarkLook needs a deterministic, testable security policy before Finder Quick Look integration.
 - The v0.1 renderer can cover the required product subset while keeping the dependency surface at Foundation only.
 
 License: project-owned source under the repository license.

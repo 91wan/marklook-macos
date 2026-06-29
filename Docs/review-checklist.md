@@ -22,14 +22,15 @@ Use this checklist for every pull request.
 - Remote resources are not loaded during preview rendering.
 - Sandbox and Hardened Runtime settings are preserved or explained.
 - MarkdownCore remains free of WebKit and AppKit imports.
+- PreviewExtension remains free of WebKit imports and `WKWebView`.
 - Renderer HTML remains self-contained with a restrictive CSP.
 
 ## Quick Look
 
 - Preview extension changes include rendered preview validation when relevant.
 - Thumbnail extension changes include thumbnail validation when relevant.
-- Preview extension stays view-based for v0.1: `PreviewViewController` implements `preparePreviewOfFile`, and `QLIsDataBasedPreview` must not be true.
-- If `QLIsDataBasedPreview` is introduced later, the controller API must move deliberately to the data-based provider path in the same design change.
+- Preview extension stays data-based for v0.1: `QLIsDataBasedPreview=true`, and `PreviewViewController` implements `providePreview`.
+- Do not mix the data-based plist flag with `preparePreviewOfFile` or any `WKWebView` path.
 - `QLSupportedContentTypes` changes avoid `public.plain-text`.
 - Cache reset commands are documented when behavior changes.
 

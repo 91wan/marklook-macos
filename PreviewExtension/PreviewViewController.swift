@@ -1,18 +1,21 @@
-import Cocoa
+import CoreGraphics
+import Foundation
 import OSLog
 import Quartz
+import UniformTypeIdentifiers
 
-final class PreviewViewController: NSViewController, @preconcurrency QLPreviewingController {
+final class PreviewViewController: QLPreviewProvider, QLPreviewingController {
+    private static let previewSize = CGSize(width: 1000, height: 800)
+
     private let pipeline = MarkdownPreviewPipeline()
 
-    override func loadView() {
-        AppLog.preview.info("loadView")
-        view = NSView()
-    }
-
-    func preparePreviewOfFile(at url: URL, completionHandler handler: @escaping (Error?) -> Void) {
+    func providePreview(
+        for request: QLFilePreviewRequest,
+        completionHandler handler: @escaping (QLPreviewReply?, Error?) -> Void
+    ) {
+        let url = request.fileURL
         let fileName = url.lastPathComponent
-        AppLog.preview.info("preparePreviewOfFile start file=\(fileName, privacy: .public)")
+        AppLog.preview.info("providePreview start file=\(fileName, privacy: .public)")
 
         let preview = pipeline.preview(for: url) { event in
             switch event {
@@ -23,20 +26,28 @@ final class PreviewViewController: NSViewController, @preconcurrency QLPreviewin
             }
         }
 
+        let html: String
         switch preview {
-        case let .webHTML(html):
-            view = MarkdownPreviewWebView(html: html)
-            AppLog.preview.info("web view assigned file=\(fileName, privacy: .public) htmlBytes=\(html.utf8.count, privacy: .public)")
-            handler(nil)
+        case let .htmlDocument(document):
+            html = document
+            AppLog.preview.info("html document ready file=\(fileName, privacy: .public) htmlBytes=\(document.utf8.count, privacy: .public)")
         case let .error(title, message):
-            view = PreviewErrorView(
+            html = PreviewErrorHTMLDocument.html(
                 title: title,
                 message: message
             )
-            AppLog.preview.error("error view assigned file=\(fileName, privacy: .public) title=\(title, privacy: .public)")
-            // Return nil after installing PreviewErrorView so Quick Look displays the local error UI
-            // instead of falling back to another provider or showing a blank panel.
-            handler(nil)
+            AppLog.preview.error("error html ready file=\(fileName, privacy: .public) title=\(title, privacy: .public)")
         }
+
+        let reply = QLPreviewReply(
+            dataOfContentType: .html,
+            contentSize: Self.previewSize
+        ) { reply in
+            reply.stringEncoding = .utf8
+            reply.title = fileName
+            return Data(html.utf8)
+        }
+
+        handler(reply, nil)
     }
 }
