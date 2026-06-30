@@ -20,12 +20,11 @@ targets:
     sources:
       - path: MarkLookApp
         excludes:
-          - Assets.xcassets
           - Info.plist
           - MarkLook.entitlements
-      - path: Shared
-    resources:
       - path: MarkLookApp/Assets.xcassets
+        buildPhase: resources
+      - path: Shared
     info:
       path: MarkLookApp/Info.plist
       properties:
@@ -70,6 +69,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.91wan.MarkLook
         PRODUCT_NAME: MarkLook
         CODE_SIGN_ENTITLEMENTS: MarkLookApp/MarkLook.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 
   MarkLookPreview:
     type: app-extension
