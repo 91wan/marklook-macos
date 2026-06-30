@@ -1,0 +1,51 @@
+import XCTest
+
+final class CommandRunnerTests: XCTestCase {
+    func testFormatsRedactedCommandDescription() {
+        let command = DiagnosticsCommand.mdls(
+            fileURL: URL(fileURLWithPath: "/Users/alice/Documents/Secret/basic.md")
+        )
+
+        XCTAssertEqual(
+            command.displayString(redactFilePaths: true),
+            "mdls -name kMDItemContentType -name kMDItemContentTypeTree basic.md"
+        )
+        XCTAssertTrue(
+            command.displayString(redactFilePaths: false)
+                .contains("/Users/alice/Documents/Secret/basic.md")
+        )
+    }
+
+    func testCommandResultTruncatesLongOutputStreams() {
+        let result = CommandRunner.CommandResult(
+            command: .quickLookReset,
+            terminationStatus: 0,
+            standardOutput: String(repeating: "o", count: 80),
+            standardError: String(repeating: "e", count: 80),
+            didTimeout: false,
+            launchErrorDescription: nil,
+            outputLimit: 24
+        )
+
+        XCTAssertTrue(result.didTruncateStandardOutput)
+        XCTAssertTrue(result.didTruncateStandardError)
+        XCTAssertTrue(result.standardOutput.contains("[truncated]"))
+        XCTAssertTrue(result.standardError.contains("[truncated]"))
+    }
+
+    func testLaunchFailureReturnsStructuredResult() async {
+        let command = DiagnosticsCommand(
+            executablePath: "/does/not/exist/marklook-missing-command",
+            arguments: [],
+            redactedArguments: [],
+            displayName: "missing-command"
+        )
+
+        let result = await CommandRunner.run(command, timeout: 1)
+
+        XCTAssertNil(result.terminationStatus)
+        XCTAssertNotNil(result.launchErrorDescription)
+        XCTAssertFalse(result.succeeded)
+        XCTAssertTrue(result.summary.contains("Launch failed"))
+    }
+}

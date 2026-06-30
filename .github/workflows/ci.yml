@@ -29,21 +29,25 @@ jobs:
           test -f Docs/adr/ADR-0002-markdown-engine.md
           test -f Docs/adr/ADR-0003-security-model.md
           test -f MarkLookApp/Info.plist
+          test -f MarkLookAppTests/Info.plist
           test -f PreviewExtensionTests/Info.plist
           test -f ThumbnailExtensionTests/Info.plist
           test -f MarkLookApp/MarkLook.entitlements
+          test -f Scripts/validate-diagnostics-boundaries.sh
           test -f Scripts/validate-supported-types.sh
           test -f Scripts/validate-built-bundle.sh
           test -f Scripts/validate-quicklook-preview-contract.sh
           test -f Scripts/validate-thumbnail-boundaries.sh
           test -f Scripts/validate-renderer-security.sh
           test -f Scripts/validate-signed-quicklook.sh
+          test -f Scripts/diagnose-quicklook-selection.sh
           test -f Scripts/diagnose-thumbnail-selection.sh
           test -f Scripts/build-local-apple-development.sh
           test -f Scripts/doctor-signing.sh
       - name: Validate plists and entitlements
         run: |
           plutil -lint MarkLookApp/Info.plist
+          plutil -lint MarkLookAppTests/Info.plist
           plutil -lint PreviewExtensionTests/Info.plist
           plutil -lint ThumbnailExtensionTests/Info.plist
           plutil -lint MarkLookApp/MarkLook.entitlements
@@ -52,6 +56,7 @@ jobs:
           plutil -lint ThumbnailExtension/Info.plist
           plutil -lint ThumbnailExtension/ThumbnailExtension.entitlements
           /usr/libexec/PlistBuddy -c 'Print :com.apple.security.app-sandbox' MarkLookApp/MarkLook.entitlements | grep -q true
+          /usr/libexec/PlistBuddy -c 'Print :com.apple.security.files.user-selected.read-only' MarkLookApp/MarkLook.entitlements | grep -q true
           /usr/libexec/PlistBuddy -c 'Print :com.apple.security.app-sandbox' PreviewExtension/PreviewExtension.entitlements | grep -q true
           /usr/libexec/PlistBuddy -c 'Print :com.apple.security.app-sandbox' ThumbnailExtension/ThumbnailExtension.entitlements | grep -q true
           Scripts/validate-supported-types.sh
@@ -65,12 +70,14 @@ jobs:
           sh -n Scripts/reset-quicklook.sh
           sh -n Scripts/diagnose-file.sh
           sh -n Scripts/package-debug.sh
+          sh -n Scripts/validate-diagnostics-boundaries.sh
           sh -n Scripts/validate-supported-types.sh
           sh -n Scripts/validate-built-bundle.sh
           sh -n Scripts/validate-quicklook-preview-contract.sh
           sh -n Scripts/validate-thumbnail-boundaries.sh
           sh -n Scripts/validate-renderer-security.sh
           sh -n Scripts/validate-signed-quicklook.sh
+          sh -n Scripts/diagnose-quicklook-selection.sh
           sh -n Scripts/diagnose-thumbnail-selection.sh
           sh -n Scripts/build-local-apple-development.sh
           sh -n Scripts/doctor-signing.sh
@@ -82,6 +89,8 @@ jobs:
         run: Tests/Scripts/validate-signed-quicklook-mode-test.sh
       - name: Validate thumbnail boundaries
         run: Scripts/validate-thumbnail-boundaries.sh
+      - name: Validate diagnostics boundaries
+        run: Scripts/validate-diagnostics-boundaries.sh
       - name: Check whitespace
         run: git diff --check
       - name: Install XcodeGen
