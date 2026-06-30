@@ -9,7 +9,8 @@ Use this checklist before preparing a public MarkLook release candidate.
 - Confirm `MarkLookApp/Assets.xcassets/AppIcon.appiconset` is committed when packaging a polished v0.1 candidate.
 - Confirm CI is green on the release-prep PR.
 - Confirm Issue #6 diagnostics dashboard acceptance is closed.
-- Do not create a `v0.1.0` tag until Issue #8 completes.
+- Confirm `Docs/v0.1.0-release-gate.md` is current.
+- Do not create a `v0.1.0` tag inside a PR branch.
 
 ## Build and runtime gates
 
@@ -20,6 +21,8 @@ Use this checklist before preparing a public MarkLook release candidate.
 - Run Finder Space preview validation for representative Markdown files when doing final manual acceptance.
 - Run thumbnail validation with `qlmanage -t -s 512 -o /tmp Samples/basic.md`.
 - Confirm diagnostics dashboard selected-file, reset-cache, and copy-report flows remain accepted.
+- Run `Scripts/validate-v0.1.0-release-candidate.sh --ci`.
+- Run `DEVELOPMENT_TEAM=<TEAM_ID> Scripts/validate-v0.1.0-release-candidate.sh --local` on the maintainer Mac, or record explicit owner deferral.
 
 ## Package gates
 
@@ -46,3 +49,5 @@ Use this checklist before preparing a public MarkLook release candidate.
 - Replace artifact URL placeholders with the final GitHub Release URL.
 - Keep `Docs/homebrew-cask-draft.rb` as draft until a real release artifact URL and SHA-256 exist.
 - Do not publish the GitHub Release or submit a Homebrew cask until Issue #8 completes.
+- After the PR merges, ask the owner before pushing `v0.1.0`.
+- If no Developer ID notarized artifact exists, describe `v0.1.0` as a source/local-validation milestone.

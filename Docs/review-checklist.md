@@ -47,3 +47,6 @@ Use this checklist for every pull request.
 - AppIcon packaging status is explicit; do not silently ship a generic icon for a polished v0.1 candidate.
 - Developer ID signing, notarization, and stapling are documented as public-release requirements when they are not performed.
 - Do not create the `v0.1.0` tag, publish a GitHub Release, or submit a Homebrew cask before the release issue explicitly authorizes it.
+- v0.1.0 hardening changes include `CHANGELOG.md`, performance notes, manual validation log, known limitations, release gate docs, and `Scripts/validate-v0.1.0-release-candidate.sh`.
+- The release candidate package path and checksum come from latest `main` or the current PR head under review, not stale PR artifacts.
+- The `v0.1.0` tag is pushed only after merge, final latest-main validation, and explicit owner approval.

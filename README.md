@@ -26,6 +26,13 @@ Fast, stable, minimal macOS Quick Look Markdown preview for AI/developer long do
 
 The app and Quick Look extensions build. MarkdownCore provides a local safe HTML renderer for the v0.1 Markdown subset, the Preview extension returns UTF-8 Markdown as data-based self-contained HTML without WebKit or network access, and the Thumbnail extension contains a bounded Markdown identity renderer without full Markdown rendering. The host app is a diagnostics surface: it reports Preview/Thumbnail registration state, lists supported Markdown content types and file extensions, diagnoses a selected file's `kMDItemContentType` and content type tree, copies a redacted diagnostics report, and exposes Quick Look cache reset commands. Local Apple Development validation has proved host-accepted app launch, PlugInKit Preview/Thumbnail registration, Finder Space rendered Markdown, and bounded thumbnail rendering on the maintainer's Mac. Public distribution still requires Developer ID Application signing, hardened runtime, notarization, and stapling.
 
+## v0.1.0 status
+
+- Source/local-validation release candidate.
+- Preview, thumbnail, diagnostics, and debug packaging are covered by the v0.1.0 release candidate gate.
+- Public notarized binary distribution is pending Developer ID Application signing, notarization, and stapling.
+- Homebrew cask content remains draft-only until a real release artifact URL and checksum exist.
+
 ## Build
 
 CI-compatible build and embedding check:
@@ -54,6 +61,22 @@ Scripts/validate-package-artifact.sh dist/MarkLook-0.1.0-debug-<shortsha>/MarkLo
 ```
 
 Unsigned CI packages are not launchable trust artifacts. Apple Development packages are local validation only. Public distribution still requires Developer ID Application signing, hardened runtime, notarization, and stapling; see `Docs/signing-notarization.md` and `Docs/release-checklist.md`.
+
+## v0.1.0 release candidate gate
+
+Run the CI-compatible gate:
+
+```bash
+Scripts/validate-v0.1.0-release-candidate.sh --ci
+```
+
+Run the maintainer Mac local gate:
+
+```bash
+DEVELOPMENT_TEAM=<TEAM_ID> Scripts/validate-v0.1.0-release-candidate.sh --local
+```
+
+The gate does not create tags, publish GitHub Releases, submit Homebrew casks, or claim Developer ID/notarization trust.
 
 ## Local development validation with ordinary Apple ID / Personal Team
 
