@@ -57,6 +57,29 @@ Expected:
 - Apple Development packages remain local validation artifacts.
 - Public release still requires Developer ID Application signing, hardened runtime, notarization, and stapling.
 
+## v0.1.0 release candidate validation
+
+CI-compatible gate:
+
+```bash
+rm -rf dist
+Scripts/validate-v0.1.0-release-candidate.sh --ci
+```
+
+Maintainer Mac local gate:
+
+```bash
+rm -rf dist
+DEVELOPMENT_TEAM=<TEAM_ID> Scripts/validate-v0.1.0-release-candidate.sh --local
+```
+
+Expected:
+
+- The gate prints `MarkLook v0.1.0 release candidate validation: PASS`.
+- The printed package path uses the current short commit SHA.
+- The gate does not create tags, publish GitHub Releases, submit Homebrew casks, or claim Developer ID/notarization trust.
+- If local mode installs `/Applications/MarkLook.app`, verify the Dock icon and Quick Look registration after the run.
+
 ## Unsigned CI limitation
 
 `CODE_SIGNING_ALLOWED=NO` proves build, embedding, renderer tests, and preview policy tests.
