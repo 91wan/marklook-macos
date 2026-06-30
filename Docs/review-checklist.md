@@ -13,6 +13,7 @@ Use this checklist for every pull request.
 - Commands are listed exactly.
 - Results are summarized clearly.
 - Failures, skipped checks, and local-only limitations are disclosed.
+- Diagnostics UI changes include MarkLookAppTests and `Scripts/validate-diagnostics-boundaries.sh`.
 
 ## Security and privacy
 
@@ -35,6 +36,7 @@ Use this checklist for every pull request.
 - Do not mix the data-based plist flag with `preparePreviewOfFile` or any `WKWebView` path.
 - `QLSupportedContentTypes` changes avoid `public.plain-text`.
 - Cache reset commands are documented when behavior changes.
+- Host app remains diagnostics/install assistance only: no editor UI, telemetry, network access, remote resources, or clickable web navigation.
 
 ## Release
 

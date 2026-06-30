@@ -12,6 +12,7 @@
 
 ```bash
 xcodegen generate
+Scripts/validate-diagnostics-boundaries.sh
 Scripts/validate-quicklook-preview-contract.sh
 Scripts/validate-thumbnail-boundaries.sh
 xcodebuild -project MarkLook.xcodeproj -scheme MarkLook -configuration Debug -derivedDataPath .build/DerivedData CODE_SIGNING_ALLOWED=NO test
@@ -23,8 +24,9 @@ Expected:
 
 - MarkLook.app builds.
 - Preview and Thumbnail app extensions are embedded in `Contents/PlugIns`.
-- MarkdownCore renderer tests, Preview extension contract tests, and Thumbnail extension metadata/renderer tests pass.
+- MarkLookApp diagnostics tests, MarkdownCore renderer tests, Preview extension contract tests, and Thumbnail extension metadata/renderer tests pass.
 - Bundle metadata validates.
+- The diagnostics app boundary script confirms the host app stays local, diagnostic-only, editor-free, and network-free.
 - The preview extension contract is data-based: `QLIsDataBasedPreview=true`, `PreviewViewController` uses `providePreview`, and PreviewExtension does not import WebKit or instantiate `WKWebView`.
 - The thumbnail extension contract is bounded: no WebKit, no MarkdownCore full render, and no unbounded full-file reads in ThumbnailExtension.
 
@@ -95,6 +97,15 @@ qlmanage -p Samples/large-fast-mode.md
 
 Expected signed-local results:
 
+- MarkLook.app opens to the diagnostics dashboard.
+- The Status section states that Preview and Thumbnail are implemented and keeps public release as future Developer ID/notarization/stapling work.
+- Preview and Thumbnail registration status are visible.
+- Supported content types and file extensions are visible.
+- Selecting `Samples/basic.md` shows `kMDItemContentType`, a content type tree when `mdls` returns one, and a supported yes/no verdict.
+- Copy Report copies a report that uses the selected basename and redacts full local paths by default.
+- Reset Quick Look Cache either succeeds or shows copyable manual commands and command output.
+- Manual enable instructions show `System Settings -> General -> Login Items & Extensions -> Quick Look`.
+- No editor UI appears.
 - `basic.md` renders as formatted Markdown, not raw text.
 - `gfm-table-task-list.md` renders tables and disabled task checkboxes.
 - `long-ai-review.md` opens without a blank white view.
@@ -120,6 +131,8 @@ mdls -name kMDItemContentType Samples/basic.md
 
 Record exact output when MarkLook is not selected. Prefer exact bundle-id lookup as fallback evidence for the thumbnail extension because provider-family listing can be incomplete on some macOS versions. Do not treat Finder behavior as product behavior until macOS accepts the signed app and extensions.
 
+The host app exposes the same registration evidence. It should interpret a missing provider-family listing plus a present exact bundle-id lookup as an incomplete provider-family listing, not as proof that the extension is absent.
+
 ## Thumbnail checks
 
 ```bash
@@ -143,3 +156,5 @@ qlmanage -r
 qlmanage -r cache
 killall Finder || true
 ```
+
+The diagnostics dashboard runs these commands in order without invoking a shell and shows each command's exit status, stdout, and stderr. If process launch is blocked, copy and run the manual commands from Terminal.

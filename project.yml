@@ -59,6 +59,7 @@ targets:
       path: MarkLookApp/MarkLook.entitlements
       properties:
         com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-only: true
     dependencies:
       - target: MarkLookPreview
         embed: true
@@ -210,6 +211,25 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.91wan.MarkLook.ThumbnailTests
         PRODUCT_NAME: MarkLookThumbnailTests
         APPLICATION_EXTENSION_API_ONLY: YES
+
+  MarkLookAppTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: MarkLookAppTests
+      - path: MarkLookApp
+        excludes:
+          - Assets.xcassets
+          - Info.plist
+          - MarkLook.entitlements
+      - path: Shared
+    info:
+      path: MarkLookAppTests/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.91wan.MarkLook.AppTests
+        PRODUCT_NAME: MarkLookAppTests
 schemes:
   MarkLook:
     build:
@@ -217,9 +237,11 @@ schemes:
         MarkLook: all
         MarkLookPreview: all
         MarkLookThumbnail: all
+        MarkLookAppTests: [test]
         MarkLookPreviewTests: [test]
         MarkLookThumbnailTests: [test]
     test:
       targets:
+        - MarkLookAppTests
         - MarkLookPreviewTests
         - MarkLookThumbnailTests

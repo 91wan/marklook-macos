@@ -5,6 +5,7 @@ Fast, stable, minimal macOS Quick Look Markdown preview for AI/developer long do
 ## What it does
 
 - Provides a buildable macOS app with Quick Look preview and thumbnail extensions.
+- Provides a diagnostics dashboard for Quick Look registration, supported Markdown types, selected-file content type checks, and cache reset assistance.
 - Provides a local MarkdownCore renderer for the v0.1 Markdown subset.
 - Renders Markdown previews through the local Preview extension.
 - Draws Markdown thumbnails from bounded file metadata: MD badge, first H1/H2 heading, extension, and approximate line count.
@@ -23,7 +24,7 @@ Fast, stable, minimal macOS Quick Look Markdown preview for AI/developer long do
 
 ## Current status
 
-The app and Quick Look extensions build. MarkdownCore provides a local safe HTML renderer for the v0.1 Markdown subset, the Preview extension returns UTF-8 Markdown as data-based self-contained HTML without WebKit or network access, and the Thumbnail extension contains a bounded Markdown identity renderer without full Markdown rendering. Local Apple Development validation has proved host-accepted app launch, PlugInKit Preview registration, and Finder Space rendered Markdown on the maintainer's Mac. Signed `qlmanage -t` thumbnail provider selection remains tracked in Issue #5. Public distribution still requires Developer ID Application signing, hardened runtime, notarization, and stapling.
+The app and Quick Look extensions build. MarkdownCore provides a local safe HTML renderer for the v0.1 Markdown subset, the Preview extension returns UTF-8 Markdown as data-based self-contained HTML without WebKit or network access, and the Thumbnail extension contains a bounded Markdown identity renderer without full Markdown rendering. The host app is a diagnostics surface: it reports Preview/Thumbnail registration state, lists supported Markdown content types and file extensions, diagnoses a selected file's `kMDItemContentType` and content type tree, copies a redacted diagnostics report, and exposes Quick Look cache reset commands. Local Apple Development validation has proved host-accepted app launch, PlugInKit Preview/Thumbnail registration, Finder Space rendered Markdown, and bounded thumbnail rendering on the maintainer's Mac. Public distribution still requires Developer ID Application signing, hardened runtime, notarization, and stapling.
 
 ## Build
 
@@ -70,11 +71,18 @@ qlmanage -r cache
 killall Finder || true
 ```
 
+The app also provides a `Reset Quick Look Cache` button. If macOS sandbox policy blocks process launch, the same commands remain copyable from the diagnostics dashboard.
+
 ## Diagnose a file
 
+Use the app's `Select File` button for the sandbox-safe path. The diagnostics report redacts full local paths by default; the full `mdls` command is available only from the explicit full-path copy button.
+
 ```bash
-mdls -name kMDItemContentType path/to/file.md
+mdls -name kMDItemContentType -name kMDItemContentTypeTree path/to/file.md
 pluginkit -mAv -p com.apple.quicklook.preview | grep -i MarkLook
+pluginkit -mAv -i com.91wan.MarkLook.Preview
+pluginkit -mAv -p com.apple.quicklook.thumbnail | grep -i MarkLook
+pluginkit -mAv -i com.91wan.MarkLook.Thumbnail
 ```
 
 ## Privacy
