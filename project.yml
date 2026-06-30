@@ -146,6 +146,7 @@ targets:
         CFBundleVersion: "1"
         NSExtension:
           NSExtensionAttributes:
+            QLThumbnailMinimumSize: 32
             QLSupportedContentTypes:
               - net.daringfireball.markdown
               - public.markdown
@@ -201,6 +202,7 @@ targets:
         excludes:
           - Info.plist
           - ThumbnailExtension.entitlements
+      - path: Shared
     info:
       path: ThumbnailExtensionTests/Info.plist
     settings:
