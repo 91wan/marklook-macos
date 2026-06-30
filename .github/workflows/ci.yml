@@ -38,6 +38,7 @@ jobs:
           test -f Scripts/validate-thumbnail-boundaries.sh
           test -f Scripts/validate-renderer-security.sh
           test -f Scripts/validate-signed-quicklook.sh
+          test -f Scripts/diagnose-thumbnail-selection.sh
           test -f Scripts/build-local-apple-development.sh
           test -f Scripts/doctor-signing.sh
       - name: Validate plists and entitlements
@@ -70,6 +71,7 @@ jobs:
           sh -n Scripts/validate-thumbnail-boundaries.sh
           sh -n Scripts/validate-renderer-security.sh
           sh -n Scripts/validate-signed-quicklook.sh
+          sh -n Scripts/diagnose-thumbnail-selection.sh
           sh -n Scripts/build-local-apple-development.sh
           sh -n Scripts/doctor-signing.sh
           sh -n Tests/Scripts/quicklook-preview-contract-test.sh
