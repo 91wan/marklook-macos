@@ -24,6 +24,10 @@ jobs:
           test -f Docs/architecture.md
           test -f Docs/review-checklist.md
           test -f Docs/manual-validation.md
+          test -f Docs/release-checklist.md
+          test -f Docs/signing-notarization.md
+          test -f Docs/github-release-draft-v0.1.0.md
+          test -f Docs/homebrew-cask-draft.rb
           test -f Docs/signing-and-plugin-validation.md
           test -f Docs/adr/ADR-0001-modern-quicklook-extension.md
           test -f Docs/adr/ADR-0002-markdown-engine.md
@@ -40,6 +44,7 @@ jobs:
           test -f Scripts/validate-thumbnail-boundaries.sh
           test -f Scripts/validate-renderer-security.sh
           test -f Scripts/validate-signed-quicklook.sh
+          test -f Scripts/validate-package-artifact.sh
           test -f Scripts/diagnose-quicklook-selection.sh
           test -f Scripts/diagnose-thumbnail-selection.sh
           test -f Scripts/build-local-apple-development.sh
@@ -70,6 +75,7 @@ jobs:
           sh -n Scripts/reset-quicklook.sh
           sh -n Scripts/diagnose-file.sh
           sh -n Scripts/package-debug.sh
+          sh -n Scripts/validate-package-artifact.sh
           sh -n Scripts/validate-diagnostics-boundaries.sh
           sh -n Scripts/validate-supported-types.sh
           sh -n Scripts/validate-built-bundle.sh
@@ -81,8 +87,11 @@ jobs:
           sh -n Scripts/diagnose-thumbnail-selection.sh
           sh -n Scripts/build-local-apple-development.sh
           sh -n Scripts/doctor-signing.sh
+          sh -n Tests/Scripts/package-debug-test.sh
           sh -n Tests/Scripts/quicklook-preview-contract-test.sh
           sh -n Tests/Scripts/validate-signed-quicklook-mode-test.sh
+      - name: Validate packaging scripts
+        run: Tests/Scripts/package-debug-test.sh
       - name: Validate Quick Look preview contract
         run: Tests/Scripts/quicklook-preview-contract-test.sh
       - name: Validate signed Quick Look script modes

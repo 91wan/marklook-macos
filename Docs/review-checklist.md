@@ -42,3 +42,8 @@ Use this checklist for every pull request.
 
 - Public docs remain accurate.
 - Known limitations are recorded when applicable.
+- Packaging changes include `Scripts/package-debug.sh`, `Scripts/validate-package-artifact.sh`, script tests, and release docs.
+- Debug packages record whether they are unsigned CI or Apple Development local-only artifacts.
+- AppIcon packaging status is explicit; do not silently ship a generic icon for a polished v0.1 candidate.
+- Developer ID signing, notarization, and stapling are documented as public-release requirements when they are not performed.
+- Do not create the `v0.1.0` tag, publish a GitHub Release, or submit a Homebrew cask before the release issue explicitly authorizes it.

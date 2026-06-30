@@ -30,6 +30,33 @@ Expected:
 - The preview extension contract is data-based: `QLIsDataBasedPreview=true`, `PreviewViewController` uses `providePreview`, and PreviewExtension does not import WebKit or instantiate `WKWebView`.
 - The thumbnail extension contract is bounded: no WebKit, no MarkdownCore full render, and no unbounded full-file reads in ThumbnailExtension.
 
+## Debug package validation
+
+Unsigned CI package:
+
+```bash
+rm -rf dist
+Scripts/package-debug.sh --unsigned-ci
+Scripts/validate-package-artifact.sh dist/MarkLook-0.1.0-debug-<shortsha>/MarkLook-0.1.0-debug-<shortsha>.zip
+```
+
+Apple Development local package:
+
+```bash
+rm -rf dist
+DEVELOPMENT_TEAM=<TEAM_ID> Scripts/package-debug.sh --apple-development
+Scripts/validate-package-artifact.sh dist/MarkLook-0.1.0-debug-<shortsha>/MarkLook-0.1.0-debug-<shortsha>.zip
+```
+
+Expected:
+
+- `dist/` contains `MarkLook.app`, `MANIFEST.txt`, a ZIP, and a `.sha256` file.
+- `MANIFEST.txt` records build mode, signing summary, TeamIdentifier when available, AppIcon status, package path, ZIP SHA-256, and the public release caveat.
+- `Scripts/validate-package-artifact.sh` accepts the generated package.
+- Unsigned CI packages remain CI-only artifacts.
+- Apple Development packages remain local validation artifacts.
+- Public release still requires Developer ID Application signing, hardened runtime, notarization, and stapling.
+
 ## Unsigned CI limitation
 
 `CODE_SIGNING_ALLOWED=NO` proves build, embedding, renderer tests, and preview policy tests.
