@@ -41,7 +41,7 @@ final class ThumbnailProvider: QLThumbnailProvider {
                 MarkdownThumbnailRenderer.draw(
                     metadata: metadata,
                     size: size,
-                    appearance: NSAppearance.current
+                    palette: .v0Light
                 )
                 return true
             }
