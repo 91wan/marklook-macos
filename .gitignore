@@ -10,3 +10,6 @@ xcuserdata/
 *.tmp
 /.worktrees/
 /worktrees/
+Docs/evidence/**/*.png
+Docs/evidence/**/*.jpg
+Docs/evidence/**/*.jpeg

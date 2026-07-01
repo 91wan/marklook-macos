@@ -9,7 +9,7 @@ source Scripts/signing-team-id.sh
 
 subject="$(cat test/fixtures/apple-development-subject-cn-ou.txt)"
 actual="$(marklook_team_id_from_subject "$subject")"
-expected="W2SP34K4MR"
+expected="TEAMID1234"
 
 if [ "$actual" != "$expected" ]; then
   echo "expected Team ID '$expected', got '$actual'" >&2
@@ -26,7 +26,7 @@ set -euo pipefail
 case "$1" in
   find-identity)
     cat <<'EOF'
-  1) EF040B171F3A8D4290C529AC65145C28B0BDA408 "Apple Development: 8618912901063 (LASA9BSN8X)"
+  1) EF040B171F3A8D4290C529AC65145C28B0BDA408 "Apple Development: 0000000000 (CNID123456)"
      1 valid identities found
 EOF
     ;;
@@ -49,7 +49,7 @@ cat >"$tmpdir/openssl" <<'STUB'
 set -euo pipefail
 
 cat <<'EOF'
-subject=UID=M73R3466UV, CN=Apple Development: 8618912901063 (LASA9BSN8X), OU=W2SP34K4MR, O=Changxi Liu, C=US
+subject=UID=USERID1234, CN=Apple Development: 0000000000 (CNID123456), OU=TEAMID1234, O=Example Developer, C=US
 EOF
 STUB
 
@@ -57,13 +57,13 @@ chmod +x "$tmpdir/security" "$tmpdir/openssl"
 
 output="$(PATH="$tmpdir:$PATH" Scripts/doctor-signing.sh)"
 
-if ! printf '%s\n' "$output" | grep -q 'DEVELOPMENT_TEAM=W2SP34K4MR Scripts/build-local-apple-development.sh'; then
+if ! printf '%s\n' "$output" | grep -q 'DEVELOPMENT_TEAM=TEAMID1234 Scripts/build-local-apple-development.sh'; then
   echo "expected doctor output to suggest certificate OU Team ID" >&2
   printf '%s\n' "$output" >&2
   exit 1
 fi
 
-if printf '%s\n' "$output" | grep -q 'DEVELOPMENT_TEAM=LASA9BSN8X'; then
+if printf '%s\n' "$output" | grep -q 'DEVELOPMENT_TEAM=CNID123456'; then
   echo "doctor output must not suggest CN parenthetical as DEVELOPMENT_TEAM" >&2
   printf '%s\n' "$output" >&2
   exit 1

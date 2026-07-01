@@ -26,7 +26,7 @@ final class DiagnosticsReportTests: XCTestCase {
             contentTypeTree: ["public.markdown", "public.text"],
             isSupported: true,
             redactedMDLSCommand: "mdls -name kMDItemContentType -name kMDItemContentTypeTree basic.md",
-            fullMDLSCommand: "mdls -name kMDItemContentType -name kMDItemContentTypeTree /Users/alice/Secret/basic.md"
+            fullMDLSCommand: "mdls -name kMDItemContentType -name kMDItemContentTypeTree /tmp/marklook-private/Secret/basic.md"
         )
         let report = DiagnosticReport(
             generatedAt: Date(timeIntervalSince1970: 1_783_000_000),
@@ -60,6 +60,6 @@ final class DiagnosticsReportTests: XCTestCase {
         XCTAssertTrue(text.contains("Selected file: basic.md"))
         XCTAssertTrue(text.contains("kMDItemContentType: public.markdown"))
         XCTAssertTrue(text.contains("Release caveat: Public distribution still requires Developer ID Application signing, notarization, and stapling."))
-        XCTAssertFalse(text.contains("/Users/alice/Secret/basic.md"))
+        XCTAssertFalse(text.contains("/tmp/marklook-private/Secret/basic.md"))
     }
 }
