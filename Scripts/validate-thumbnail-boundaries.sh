@@ -10,6 +10,16 @@ set -euo pipefail
 ! git grep -n "Data(contentsOf:" -- ThumbnailExtension
 ! git grep -n "String(contentsOf:" -- ThumbnailExtension
 
+# Deterministic thumbnails: no ambient appearance or dynamic system colors.
+! git grep -n "NSAppearance.current" -- ThumbnailExtension
+! git grep -n "NSAppearance(named:" -- ThumbnailExtension
+! git grep -n "textBackgroundColor" -- ThumbnailExtension
+! git grep -n "controlBackgroundColor" -- ThumbnailExtension
+! git grep -n "separatorColor" -- ThumbnailExtension
+! git grep -n "labelColor" -- ThumbnailExtension
+! git grep -n "secondaryLabelColor" -- ThumbnailExtension
+! git grep -n "controlAccentColor" -- ThumbnailExtension
+
 git grep -n "QLThumbnailProvider" -- ThumbnailExtension
 /usr/libexec/PlistBuddy \
   -c 'Print :NSExtension:NSExtensionAttributes:QLThumbnailMinimumSize' \
@@ -20,3 +30,5 @@ git grep -n "AppLog.thumbnail" -- ThumbnailExtension/ThumbnailProvider.swift
 
 test -f ThumbnailExtension/MarkdownThumbnailMetadata.swift
 test -f ThumbnailExtension/MarkdownThumbnailRenderer.swift
+test -f ThumbnailExtension/MarkdownThumbnailPalette.swift
+test -f ThumbnailExtension/MarkdownThumbnailLayout.swift

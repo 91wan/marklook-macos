@@ -4,7 +4,7 @@ enum MarkdownThumbnailRenderer {
     static func render(
         metadata: MarkdownThumbnailMetadata,
         size: CGSize,
-        appearance: NSAppearance? = nil
+        palette: MarkdownThumbnailPalette = .v0Light
     ) -> NSImage {
         let image = NSImage(size: size)
         image.lockFocus()
@@ -12,73 +12,52 @@ enum MarkdownThumbnailRenderer {
             image.unlockFocus()
         }
 
-        draw(metadata: metadata, size: size, appearance: appearance)
+        draw(metadata: metadata, size: size, palette: palette)
         return image
     }
 
     static func draw(
         metadata: MarkdownThumbnailMetadata,
         size: CGSize,
-        appearance: NSAppearance? = nil
+        palette: MarkdownThumbnailPalette = .v0Light
     ) {
-        let previousAppearance = NSAppearance.current
-        if let appearance {
-            NSAppearance.current = appearance
-        }
-        defer {
-            NSAppearance.current = previousAppearance
-        }
-
-        let rect = CGRect(origin: .zero, size: size)
-        NSColor.textBackgroundColor.setFill()
-        NSBezierPath(rect: rect).fill()
-
+        let layout = MarkdownThumbnailLayout.make(size: size)
         let shortestSide = max(1, min(size.width, size.height))
-        let inset = max(10, shortestSide * 0.075)
-        let cardRect = rect.insetBy(dx: inset, dy: inset)
         let radius = max(8, shortestSide * 0.035)
-        let cardPath = NSBezierPath(roundedRect: cardRect, xRadius: radius, yRadius: radius)
-        NSColor.controlBackgroundColor.setFill()
+
+        palette.canvas.setFill()
+        NSBezierPath(rect: layout.canvasRect).fill()
+
+        let cardPath = NSBezierPath(roundedRect: layout.cardRect, xRadius: radius, yRadius: radius)
+        palette.card.setFill()
         cardPath.fill()
-        NSColor.separatorColor.setStroke()
+        palette.border.setStroke()
         cardPath.lineWidth = max(1, shortestSide * 0.004)
         cardPath.stroke()
 
-        let badgeSize = CGSize(width: cardRect.width * 0.33, height: cardRect.height * 0.2)
-        let badgeRect = CGRect(
-            x: cardRect.minX + inset * 0.75,
-            y: cardRect.maxY - inset * 0.75 - badgeSize.height,
-            width: badgeSize.width,
-            height: badgeSize.height
-        )
-        drawBadge(in: badgeRect, cornerRadius: radius * 0.7, shortestSide: shortestSide)
+        drawBadge(in: layout.badgeRect, cornerRadius: radius * 0.7, shortestSide: shortestSide, palette: palette)
 
         let extensionLabel = metadata.fileExtension.isEmpty ? ".md" : ".\(metadata.fileExtension)"
         drawText(
             extensionLabel,
-            in: CGRect(
-                x: badgeRect.maxX + inset * 0.55,
-                y: badgeRect.minY + badgeRect.height * 0.18,
-                width: max(0, cardRect.maxX - badgeRect.maxX - inset * 1.3),
-                height: badgeRect.height * 0.65
-            ),
-            font: NSFont.monospacedSystemFont(ofSize: max(12, shortestSide * 0.055), weight: .semibold),
-            color: .secondaryLabelColor,
+            in: layout.extensionRect,
+            font: NSFont.monospacedSystemFont(ofSize: max(8, min(24, shortestSide * 0.048)), weight: .semibold),
+            color: palette.secondaryText,
             lineLimit: 1
         )
 
-        let title = metadata.heading ?? metadata.fileName
+        let title = displayTitle(for: metadata, maxCharacters: maxTitleCharacters(for: shortestSide))
         let titleRect = CGRect(
-            x: cardRect.minX + inset * 0.75,
-            y: cardRect.minY + cardRect.height * 0.29,
-            width: cardRect.width - inset * 1.5,
-            height: cardRect.height * 0.32
+            x: layout.titleRect.minX,
+            y: layout.titleRect.minY,
+            width: layout.titleRect.width,
+            height: layout.titleRect.height
         )
         drawText(
             title,
             in: titleRect,
-            font: NSFont.systemFont(ofSize: max(15, shortestSide * 0.07), weight: .semibold),
-            color: .labelColor,
+            font: NSFont.systemFont(ofSize: max(10, min(34, shortestSide * 0.062)), weight: .semibold),
+            color: palette.primaryText,
             lineLimit: shortestSide < 300 ? 2 : 3
         )
 
@@ -86,32 +65,40 @@ enum MarkdownThumbnailRenderer {
         let footer = metadata.isUTF8 ? lineSummary : "\(lineSummary) - UTF-8 unavailable"
         drawText(
             footer,
-            in: CGRect(
-                x: cardRect.minX + inset * 0.75,
-                y: cardRect.minY + inset * 0.8,
-                width: cardRect.width - inset * 1.5,
-                height: max(16, cardRect.height * 0.1)
-            ),
-            font: NSFont.systemFont(ofSize: max(10, shortestSide * 0.045), weight: .medium),
-            color: .secondaryLabelColor,
+            in: layout.footerRect,
+            font: NSFont.systemFont(ofSize: max(8, min(22, shortestSide * 0.040)), weight: .medium),
+            color: palette.secondaryText,
             lineLimit: 1
         )
+    }
+
+    static func displayTitle(for metadata: MarkdownThumbnailMetadata, maxCharacters: Int) -> String {
+        let source = metadata.heading ?? metadata.fileName
+        let collapsed = source
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        guard collapsed.count > maxCharacters else {
+            return collapsed
+        }
+        return String(collapsed.prefix(max(1, maxCharacters))) + "..."
     }
 
     private static func drawBadge(
         in rect: CGRect,
         cornerRadius: CGFloat,
-        shortestSide: CGFloat
+        shortestSide: CGFloat,
+        palette: MarkdownThumbnailPalette
     ) {
         let badgePath = NSBezierPath(roundedRect: rect, xRadius: cornerRadius, yRadius: cornerRadius)
-        NSColor.controlAccentColor.setFill()
+        palette.badge.setFill()
         badgePath.fill()
 
         drawText(
             "MD",
             in: rect.insetBy(dx: rect.width * 0.08, dy: rect.height * 0.08),
-            font: NSFont.systemFont(ofSize: max(18, shortestSide * 0.085), weight: .heavy),
-            color: .white,
+            font: NSFont.systemFont(ofSize: max(11, min(42, shortestSide * 0.080)), weight: .heavy),
+            color: palette.badgeText,
             lineLimit: 1,
             alignment: .center
         )
@@ -146,5 +133,18 @@ enum MarkdownThumbnailRenderer {
         let suffix = metadata.isTruncated ? "+" : ""
         let unit = metadata.approximateLineCount == 1 && !metadata.isTruncated ? "line" : "lines"
         return "\(metadata.approximateLineCount)\(suffix) \(unit)"
+    }
+
+    private static func maxTitleCharacters(for shortestSide: CGFloat) -> Int {
+        switch shortestSide {
+        case ..<180:
+            return 28
+        case ..<360:
+            return 44
+        case ..<720:
+            return 72
+        default:
+            return 96
+        }
     }
 }
