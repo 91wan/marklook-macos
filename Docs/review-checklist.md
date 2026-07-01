@@ -8,6 +8,14 @@ Use this checklist for every pull request.
 - Behavior changes are explicitly listed, or the PR says `behavior changes: none`.
 - Architecture changes have an ADR before implementation.
 
+## Product compatibility
+
+- MarkLook remains a Quick Look reading layer, not a Markdown editor.
+- Changes to `CFBundleDocumentTypes`, `LSHandlerRank`, supported content types, or file ownership must preserve `Viewer` / `Alternate` unless an explicit ADR approves otherwise.
+- PRs must not add editor UI such as `TextEditor`, formatting commands, save/write document flows, project graphs, or default Markdown ownership.
+- Adjacent Markdown editors such as Edmund are treated as compatible editors, not targets to replace.
+- `Scripts/validate-supported-types.sh` must pass when file type declarations change.
+
 ## Validation
 
 - Commands are listed exactly.

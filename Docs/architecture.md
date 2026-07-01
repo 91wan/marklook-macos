@@ -28,6 +28,23 @@ The preview extension is data-based. It returns self-contained HTML to Quick Loo
 
 MarkLook renders Markdown in Finder Quick Look. It is not an editor, notes app, knowledge base, cloud service, AI summarizer, Electron app, Finder Sync extension, or deprecated `.qlgenerator`.
 
+## Architecture invariants
+
+- MarkLook is a Quick Look reading layer, not a Markdown editor.
+- Host app remains diagnostics/install assistance only.
+- MarkLook must not become the default Markdown file owner.
+- `CFBundleTypeRole` remains `Viewer`.
+- `LSHandlerRank` remains `Alternate`.
+- PreviewExtension remains data-based: `QLPreviewReply(dataOfContentType: .html)`.
+- PreviewExtension does not use `WKWebView`.
+- ThumbnailExtension reads bounded metadata only and never full-renders Markdown.
+- ThumbnailExtension does not use WebKit.
+- No network entitlement.
+- No telemetry.
+- No `.qlgenerator`.
+
+See `Docs/adjacent-markdown-editors.md` for compatibility with native Markdown editors such as Edmund.
+
 ## Security boundary
 
 Preview rendering is local-only:
