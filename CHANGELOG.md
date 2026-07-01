@@ -32,7 +32,7 @@
 ### Validation
 
 - CI build/test: passed in the v0.1.0 release candidate gate.
-- Signed local validation: passed with Apple Development Team ID `W2SP34K4MR` on the maintainer Mac.
+- Signed local validation: passed with a redacted Apple Development Team ID on the maintainer Mac.
 - Finder Space preview: pending owner/manual acceptance.
 - Thumbnail validation: passed with `/Applications/MarkLook.app` as the only active MarkLook PlugInKit registration.
 - Diagnostics dashboard: covered by the release candidate gate and local signed validation.

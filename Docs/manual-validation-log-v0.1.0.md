@@ -6,7 +6,7 @@
 - macOS: 26.5.1 (25F80)
 - Mac model: Mac16,12
 - Xcode: 26.6 (17F113)
-- Signing identity: Apple Development, Team ID `W2SP34K4MR`
+- Signing identity: Apple Development, Team ID redacted
 
 ## Git State
 

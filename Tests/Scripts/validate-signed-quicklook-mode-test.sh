@@ -42,7 +42,7 @@ Executable=/tmp/MarkLook.app/Contents/MacOS/MarkLook
 Identifier=com.91wan.MarkLook
 Format=app bundle with Mach-O thin (arm64)
 Signature size=4800
-TeamIdentifier=W2SP34K4MR
+TeamIdentifier=TEAMID1234
 EOF
 fi
 STUB

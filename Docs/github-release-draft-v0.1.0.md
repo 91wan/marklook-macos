@@ -45,7 +45,7 @@ killall Finder || true
 ## Local validation summary
 
 - CI build and tests: passed in the v0.1.0 release candidate gate on the PR worktree; rerun on latest `main` before tagging.
-- Apple Development local validation: passed with Team ID `W2SP34K4MR` on the maintainer Mac; rerun on latest `main` before tagging.
+- Apple Development local validation: passed with a redacted Team ID on the maintainer Mac; rerun on latest `main` before tagging.
 - Finder Space preview validation: owner/manual acceptance still required or explicitly deferred before tagging.
 - Thumbnail validation: passed with `/Applications/MarkLook.app` as the only active MarkLook PlugInKit registration.
 - Diagnostics dashboard acceptance: covered by local signed validation; final owner acceptance still required for release closure.

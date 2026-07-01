@@ -3,7 +3,7 @@ import XCTest
 final class CommandRunnerTests: XCTestCase {
     func testFormatsRedactedCommandDescription() {
         let command = DiagnosticsCommand.mdls(
-            fileURL: URL(fileURLWithPath: "/Users/alice/Documents/Secret/basic.md")
+            fileURL: URL(fileURLWithPath: "/tmp/marklook-private/Documents/Secret/basic.md")
         )
 
         XCTAssertEqual(
@@ -12,7 +12,7 @@ final class CommandRunnerTests: XCTestCase {
         )
         XCTAssertTrue(
             command.displayString(redactFilePaths: false)
-                .contains("/Users/alice/Documents/Secret/basic.md")
+                .contains("/tmp/marklook-private/Documents/Secret/basic.md")
         )
     }
 

@@ -15,7 +15,7 @@ final class DiagnosticsParsingTests: XCTestCase {
 
         let diagnostic = FileDiagnostic.parse(
             mdlsOutput: output,
-            fileURL: URL(fileURLWithPath: "/Users/alice/Documents/basic.md")
+            fileURL: URL(fileURLWithPath: "/tmp/marklook-private/Documents/basic.md")
         )
 
         XCTAssertEqual(diagnostic.fileName, "basic.md")
@@ -42,7 +42,7 @@ final class DiagnosticsParsingTests: XCTestCase {
 
         let diagnostic = FileDiagnostic.parse(
             mdlsOutput: output,
-            fileURL: URL(fileURLWithPath: "/Users/alice/Documents/notes.md")
+            fileURL: URL(fileURLWithPath: "/tmp/marklook-private/Documents/notes.md")
         )
 
         XCTAssertEqual(diagnostic.contentType, "dyn.ah62d4rv4ge81g5p")
@@ -60,7 +60,7 @@ final class DiagnosticsParsingTests: XCTestCase {
 
         let diagnostic = FileDiagnostic.parse(
             mdlsOutput: output,
-            fileURL: URL(fileURLWithPath: "/Users/alice/Documents/blob.bin")
+            fileURL: URL(fileURLWithPath: "/tmp/marklook-private/Documents/blob.bin")
         )
 
         XCTAssertFalse(diagnostic.isSupported)
