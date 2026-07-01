@@ -13,3 +13,5 @@
 - Thumbnail line count is approximate and prefix-based.
 - Finder/Quick Look provider selection can vary by host registration state, extension enablement, signing state, and cache state.
 - Local release validation should clean stale worktree PlugInKit registrations and verify only `/Applications/MarkLook.app` is active.
+- MarkLook is not a Markdown editor and intentionally does not become the default Markdown file owner.
+- MarkLook is designed to coexist with native Markdown editors such as Edmund; if a host has conflicting file ownership or Quick Look provider selection, use diagnostics rather than changing MarkLook into an editor.

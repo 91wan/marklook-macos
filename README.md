@@ -22,6 +22,14 @@ Fast, stable, minimal macOS Quick Look Markdown preview for AI/developer long do
 - Not an Electron app.
 - Not a deprecated `.qlgenerator`.
 
+## Compatibility with Markdown editors
+
+MarkLook is designed to coexist with Markdown editors such as Edmund, Typora, MarkEdit, Obsidian, VS Code, Xcode, and others.
+
+Those apps own editing. MarkLook owns Finder Quick Look preview and thumbnails.
+
+MarkLook registers as a Markdown viewer/alternate handler, not as the default Markdown editor.
+
 ## Current status
 
 The app and Quick Look extensions build. MarkdownCore provides a local safe HTML renderer for the v0.1 Markdown subset, the Preview extension returns UTF-8 Markdown as data-based self-contained HTML without WebKit or network access, and the Thumbnail extension contains a bounded Markdown identity renderer without full Markdown rendering. The host app is a diagnostics surface: it reports Preview/Thumbnail registration state, lists supported Markdown content types and file extensions, diagnoses a selected file's `kMDItemContentType` and content type tree, copies a redacted diagnostics report, and exposes Quick Look cache reset commands. Local Apple Development validation has proved host-accepted app launch, PlugInKit Preview/Thumbnail registration, Finder Space rendered Markdown, and bounded thumbnail rendering on the maintainer's Mac. Public distribution still requires Developer ID Application signing, hardened runtime, notarization, and stapling.
