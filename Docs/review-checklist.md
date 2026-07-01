@@ -34,6 +34,15 @@ Use this checklist for every pull request.
 - PreviewExtension remains free of WebKit imports and `WKWebView`.
 - Renderer HTML remains self-contained with a restrictive CSP.
 
+## Public evidence / privacy
+
+- Do not commit Finder screenshots or generated runtime thumbnail PNGs.
+- Do not include raw `/Users/<name>/...` paths.
+- Do not include real Apple TeamIdentifier or certificate subject values.
+- Use `TeamIdentifier: redacted` and `DEVELOPMENT_TEAM=<TEAM_ID>`.
+- Use text-only summaries for visual validation unless screenshots are sanitized and explicitly approved.
+- `Scripts/validate-public-repo-privacy.sh --archive` must pass before merging.
+
 ## Quick Look
 
 - Preview extension changes include rendered preview validation when relevant.

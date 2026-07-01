@@ -8,6 +8,7 @@ Use this checklist before preparing a public MarkLook release candidate.
 - Confirm there are no local uncommitted AppIcon changes outside the release branch.
 - Confirm `MarkLookApp/Assets.xcassets/AppIcon.appiconset` is committed when packaging a polished v0.1 candidate.
 - Confirm CI is green on the release-prep PR.
+- Confirm `Scripts/validate-public-repo-privacy.sh --archive` passes before publication.
 - Confirm Issue #6 diagnostics dashboard acceptance is closed.
 - Confirm `Docs/v0.1.0-release-gate.md` is current.
 - Do not create a `v0.1.0` tag inside a PR branch.

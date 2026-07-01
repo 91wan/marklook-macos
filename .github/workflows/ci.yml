@@ -26,6 +26,7 @@ jobs:
           test -f Docs/review-checklist.md
           test -f Docs/manual-validation.md
           test -f Docs/release-checklist.md
+          test -f Docs/public-evidence-policy.md
           test -f Docs/performance-notes-v0.1.0.md
           test -f Docs/manual-validation-log-v0.1.0.md
           test -f Docs/known-limitations-v0.1.0.md
@@ -49,6 +50,7 @@ jobs:
           test -f Scripts/validate-thumbnail-boundaries.sh
           test -f Scripts/validate-renderer-security.sh
           test -f Scripts/validate-signed-quicklook.sh
+          test -f Scripts/validate-public-repo-privacy.sh
           test -f Scripts/validate-package-artifact.sh
           test -f Scripts/validate-v0.1.0-release-candidate.sh
           test -f Scripts/diagnose-quicklook-selection.sh
@@ -90,6 +92,7 @@ jobs:
           sh -n Scripts/validate-thumbnail-boundaries.sh
           sh -n Scripts/validate-renderer-security.sh
           sh -n Scripts/validate-signed-quicklook.sh
+          sh -n Scripts/validate-public-repo-privacy.sh
           sh -n Scripts/diagnose-quicklook-selection.sh
           sh -n Scripts/diagnose-thumbnail-selection.sh
           sh -n Scripts/build-local-apple-development.sh
@@ -98,6 +101,7 @@ jobs:
           sh -n Tests/Scripts/v0.1-release-gate-test.sh
           sh -n Tests/Scripts/quicklook-preview-contract-test.sh
           sh -n Tests/Scripts/validate-signed-quicklook-mode-test.sh
+          sh -n Tests/Scripts/public-repo-privacy-test.sh
       - name: Validate packaging scripts
         run: Tests/Scripts/package-debug-test.sh
       - name: Validate v0.1.0 release gate script
@@ -106,6 +110,11 @@ jobs:
         run: Tests/Scripts/quicklook-preview-contract-test.sh
       - name: Validate signed Quick Look script modes
         run: Tests/Scripts/validate-signed-quicklook-mode-test.sh
+      - name: Validate public repo privacy
+        run: |
+          Tests/Scripts/public-repo-privacy-test.sh
+          Scripts/validate-public-repo-privacy.sh
+          Scripts/validate-public-repo-privacy.sh --archive
       - name: Validate thumbnail boundaries
         run: Scripts/validate-thumbnail-boundaries.sh
       - name: Validate diagnostics boundaries
