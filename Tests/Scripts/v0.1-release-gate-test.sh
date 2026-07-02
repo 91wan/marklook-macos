@@ -83,7 +83,8 @@ cat >"$stub_bin/package-debug" <<'STUB'
 set -euo pipefail
 printf 'package-debug %s\n' "$*" >>"$MARKLOOK_RC_TEST_LOG"
 short_sha="$(git rev-parse --short HEAD)"
-artifact_stem="MarkLook-0.1.0-debug-$short_sha"
+version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' MarkLookApp/Info.plist)"
+artifact_stem="MarkLook-$version-debug-$short_sha"
 output_dir="$MARKLOOK_PACKAGE_DIST_DIR/$artifact_stem"
 mkdir -p "$output_dir"
 echo "zip" >"$output_dir/$artifact_stem.zip"

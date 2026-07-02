@@ -11,7 +11,9 @@ Use this checklist before preparing a public MarkLook release candidate.
 - Confirm `Scripts/validate-public-repo-privacy.sh --archive` passes before publication.
 - Confirm Issue #6 diagnostics dashboard acceptance is closed.
 - Confirm `Docs/v0.1.0-release-gate.md` is current.
+- For v0.1.1 source/local-validation patches, confirm `Docs/v0.1.1-source-local-validation.md` is current.
 - Do not create a `v0.1.0` tag inside a PR branch.
+- Do not create a `v0.1.1` tag inside a PR branch.
 
 ## Build and runtime gates
 
@@ -24,6 +26,7 @@ Use this checklist before preparing a public MarkLook release candidate.
 - Confirm diagnostics dashboard selected-file, reset-cache, and copy-report flows remain accepted.
 - Run `Scripts/validate-v0.1.0-release-candidate.sh --ci`.
 - Run `DEVELOPMENT_TEAM=<TEAM_ID> Scripts/validate-v0.1.0-release-candidate.sh --local` on the maintainer Mac, or record explicit owner deferral.
+- For v0.1.1, reuse `Scripts/validate-v0.1.0-release-candidate.sh` as the established CI/local validation gate unless the gate script is intentionally renamed in a separate cleanup.
 
 ## Package gates
 
@@ -51,4 +54,6 @@ Use this checklist before preparing a public MarkLook release candidate.
 - Keep `Docs/homebrew-cask-draft.rb` as draft until a real release artifact URL and SHA-256 exist.
 - Do not publish the GitHub Release or submit a Homebrew cask until Issue #8 completes.
 - After the PR merges, ask the owner before pushing `v0.1.0`.
+- After the PR merges, ask the owner before pushing `v0.1.1`.
 - If no Developer ID notarized artifact exists, describe `v0.1.0` as a source/local-validation milestone.
+- If no Developer ID notarized artifact exists, describe `v0.1.1` as a source/local-validation patch.
