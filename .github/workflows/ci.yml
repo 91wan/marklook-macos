@@ -15,6 +15,9 @@ jobs:
       - name: Validate required scaffold files
         run: |
           test -f README.md
+          test -f README_ZH.md
+          grep -q "README_ZH.md" README.md
+          grep -q "README.md" README_ZH.md
           test -f CHANGELOG.md
           test -f LICENSE
           test -f PRIVACY.md
