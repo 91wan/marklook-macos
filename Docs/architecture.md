@@ -39,6 +39,9 @@ MarkLook renders Markdown in Finder Quick Look. It is not an editor, notes app, 
 - PreviewExtension does not use `WKWebView`.
 - ThumbnailExtension reads bounded metadata only and never full-renders Markdown.
 - ThumbnailExtension does not use WebKit.
+- Thumbnail appearance is deterministic for v0.1.x.
+- ThumbnailExtension uses fixed palette values, not ambient `NSAppearance.current`.
+- Dark/gray thumbnail variants require an explicit future product decision.
 - No network entitlement.
 - No telemetry.
 - No `.qlgenerator`.

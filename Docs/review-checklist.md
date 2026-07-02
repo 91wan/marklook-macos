@@ -48,6 +48,9 @@ Use this checklist for every pull request.
 - Preview extension changes include rendered preview validation when relevant.
 - Thumbnail extension changes include thumbnail validation when relevant.
 - Thumbnail extension changes prove bounded metadata extraction and must not use WebKit, MarkdownCore full rendering, or unbounded full-file reads.
+- Thumbnail appearance changes must preserve deterministic output.
+- ThumbnailExtension must not depend on `NSAppearance.current` or dynamic AppKit system colors.
+- Dark/gray thumbnail variants require explicit product decision, fixed palette values, and determinism tests.
 - Signed Quick Look validation states whether `--noninteractive` or `--interactive-preview` was run.
 - Preview extension stays data-based for v0.1: `QLIsDataBasedPreview=true`, and `PreviewViewController` implements `providePreview`.
 - Do not mix the data-based plist flag with `preparePreviewOfFile` or any `WKWebView` path.

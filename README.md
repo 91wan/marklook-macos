@@ -9,6 +9,7 @@ Fast, stable, minimal macOS Quick Look Markdown preview for AI/developer long do
 - Provides a local MarkdownCore renderer for the v0.1 Markdown subset.
 - Renders Markdown previews through the local Preview extension.
 - Draws Markdown thumbnails from bounded file metadata: MD badge, first H1/H2 heading, extension, and approximate line count.
+- Uses a fixed light document-card thumbnail style for v0.1.x so Finder thumbnails remain deterministic across cache and appearance contexts.
 - Targets `.md` files and long AI/Codex review documents.
 - Keeps rendering local.
 - No telemetry.
