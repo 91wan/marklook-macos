@@ -11,6 +11,7 @@
 - Links are inert and non-navigating in preview.
 - Large files may enter fast mode and show a warning.
 - Thumbnail line count is approximate and prefix-based.
+- Finder thumbnails intentionally use a fixed light document-card palette in v0.1.x. They do not adapt to Finder dark mode.
 - Finder/Quick Look provider selection can vary by host registration state, extension enablement, signing state, and cache state.
 - Local release validation should clean stale worktree PlugInKit registrations and verify only `/Applications/MarkLook.app` is active.
 - MarkLook is not a Markdown editor and intentionally does not become the default Markdown file owner.
