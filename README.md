@@ -1,5 +1,7 @@
 # MarkLook
 
+[简体中文](README_ZH.md)
+
 Fast, stable, minimal macOS Quick Look Markdown preview for AI/developer long docs.
 
 ## What it does
