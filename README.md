@@ -37,9 +37,10 @@ MarkLook registers as a Markdown viewer/alternate handler, not as the default Ma
 
 The app and Quick Look extensions build. MarkdownCore provides a local safe HTML renderer for the v0.1 Markdown subset, the Preview extension returns UTF-8 Markdown as data-based self-contained HTML without WebKit or network access, and the Thumbnail extension contains a bounded Markdown identity renderer without full Markdown rendering. The host app is a diagnostics surface: it reports Preview/Thumbnail registration state, lists supported Markdown content types and file extensions, diagnoses a selected file's `kMDItemContentType` and content type tree, copies a redacted diagnostics report, and exposes Quick Look cache reset commands. Local Apple Development validation has proved host-accepted app launch, PlugInKit Preview/Thumbnail registration, Finder Space rendered Markdown, and bounded thumbnail rendering on the maintainer's Mac. Public distribution still requires Developer ID Application signing, hardened runtime, notarization, and stapling.
 
-## v0.1.0 status
+## v0.1.x status
 
-- Source/local-validation release candidate.
+- v0.1.0 is a source/local-validation release candidate.
+- The planned v0.1.1 source/local-validation patch covers thumbnail determinism, public privacy gates, fixed light thumbnail appearance policy docs, and Chinese README coverage.
 - Preview, thumbnail, diagnostics, and debug packaging are covered by the v0.1.0 release candidate gate.
 - Public notarized binary distribution is pending Developer ID Application signing, notarization, and stapling.
 - Homebrew cask content remains draft-only until a real release artifact URL and checksum exist.
@@ -88,6 +89,8 @@ DEVELOPMENT_TEAM=<TEAM_ID> Scripts/validate-v0.1.0-release-candidate.sh --local
 ```
 
 The gate does not create tags, publish GitHub Releases, submit Homebrew casks, or claim Developer ID/notarization trust.
+
+For the v0.1.1 source/local-validation patch boundary, see `Docs/v0.1.1-source-local-validation.md`. The `v0.1.1` tag still requires a second explicit owner approval after merge and final latest-main validation.
 
 ## Local development validation with ordinary Apple ID / Personal Team
 

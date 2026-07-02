@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.1.1 - 2026-07-02
+
+### Fixed
+
+- Made Markdown thumbnail rendering deterministic and non-overlapping for Finder icon view.
+- Preserved the fixed light thumbnail appearance policy for v0.1.x so Finder cache and appearance contexts produce the same thumbnail output.
+
+### Security / Privacy
+
+- Removed public runtime evidence images from the current repository tree.
+- Added a permanent public-repository privacy gate for current and archived repository scans.
+
+### Documentation
+
+- Documented the v0.1.x fixed light thumbnail appearance policy.
+- Added `README_ZH.md` and linked it from the English README.
+- Added v0.1.1 source/local-validation gate documentation.
+
+### Validation
+
+- v0.1.1 is prepared as a source/local-validation patch only.
+- CI-compatible and local Apple Development validation must pass on the final merged commit before any tag is created.
+- Public notarized binary distribution still requires Developer ID Application signing, hardened runtime, notarization, and stapling.
+
 ## 0.1.0 - 2026-06-30
 
 ### Added
