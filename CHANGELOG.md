@@ -21,6 +21,7 @@
 ### Validation
 
 - v0.1.1 is prepared as a source/local-validation patch only.
+- App and Quick Look extension bundle metadata use `CFBundleShortVersionString=0.1.1` and `CFBundleVersion=2`.
 - CI-compatible and local Apple Development validation must pass on the final merged commit before any tag is created.
 - Public notarized binary distribution still requires Developer ID Application signing, hardened runtime, notarization, and stapling.
 
