@@ -78,6 +78,33 @@ Scripts/validate-package-artifact.sh dist/MarkLook-0.1.0-debug-<shortsha>/MarkLo
 
 Unsigned CI packages 不是可安装的信任产物。Apple Development packages 仅用于本地验证。公开分发仍需要 Developer ID Application signing、hardened runtime、notarization 和 stapling；见 `Docs/signing-notarization.md` 和 `Docs/release-checklist.md`。
 
+## Developer ID 公开二进制分发 lane
+
+公开二进制分发使用单独的 Developer ID lane。先运行 identity doctor 和 CI-safe dry run：
+
+```bash
+Scripts/doctor-release-identity.sh
+Scripts/package-developer-id.sh --dry-run
+```
+
+只有具备 Developer ID Application identity 的 maintainer Mac 才能创建 signed public-distribution candidate：
+
+```bash
+DEVELOPER_ID_APPLICATION="Developer ID Application: <NAME> (<TEAM_ID>)" \
+  Scripts/package-developer-id.sh --developer-id
+Scripts/validate-developer-id-artifact.sh --signed-only dist/MarkLook-<version>-developer-id-<shortsha>/MarkLook-<version>-developer-id-<shortsha>.zip
+```
+
+公开 notarized publication 还需要本地 `notarytool` keychain profile：
+
+```bash
+DEVELOPER_ID_APPLICATION="Developer ID Application: <NAME> (<TEAM_ID>)" \
+NOTARYTOOL_PROFILE=<PROFILE> \
+  Scripts/package-developer-id.sh --developer-id --notarize
+```
+
+详见 `Docs/developer-id-release-lane.md` 和 `Docs/public-binary-release-checklist.md`。不要从 unsigned CI 或 Apple Development package 发布 GitHub Release、Homebrew cask，或声称公开二进制信任。
+
 ## Release candidate gate
 
 运行 CI-compatible gate：

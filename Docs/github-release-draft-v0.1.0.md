@@ -1,6 +1,6 @@
 # MarkLook v0.1.0 release draft
 
-Do not publish this draft until Issue #8 completes.
+Do not publish this draft until the Developer ID public binary release lane passes.
 
 ## Release title
 
@@ -19,10 +19,12 @@ MarkLook is a fast, local macOS Quick Look reader for Markdown files, focused on
 - Supported Markdown content types and extensions for common AI/developer docs
 - Local diagnostics for PlugInKit registration, selected-file `mdls` content type, Quick Look cache reset, and report copying
 - Debug package scripts and package artifact validation
+- Developer ID release lane documentation and CI-safe dry run
 
 ## Known limitations
 
 - Public release packaging is not complete until Developer ID signing, notarization, and stapling are performed.
+- The Developer ID lane must pass `Docs/public-binary-release-checklist.md` before this draft becomes a public binary release.
 - Apple Development packages are local validation artifacts only.
 - Unsigned CI packages are not installable trust artifacts.
 - Finder provider selection can vary by host registration state; use the diagnostics dashboard and validation scripts when debugging.
@@ -30,7 +32,7 @@ MarkLook is a fast, local macOS Quick Look reader for Markdown files, focused on
 
 ## Install notes
 
-1. Download the final release artifact after Issue #8 completes.
+1. Download the final release artifact after the Developer ID public binary release lane completes.
 2. Install `MarkLook.app` into `/Applications`.
 3. Open MarkLook once.
 4. Enable MarkLook Quick Look extensions if macOS shows them under System Settings -> General -> Login Items & Extensions -> Quick Look.
@@ -49,7 +51,7 @@ killall Finder || true
 - Finder Space preview validation: owner/manual acceptance still required or explicitly deferred before tagging.
 - Thumbnail validation: passed with `/Applications/MarkLook.app` as the only active MarkLook PlugInKit registration.
 - Diagnostics dashboard acceptance: covered by local signed validation; final owner acceptance still required for release closure.
-- Package validation: unsigned CI and Apple Development local artifacts passed validation; public release artifact still pending Developer ID/notarization.
+- Package validation: unsigned CI and Apple Development local artifacts passed validation; public release artifact still pending Developer ID signing, notarization, stapling, and `spctl` assessment.
 
 ## Checksums
 
@@ -66,8 +68,8 @@ https://github.com/91wan/marklook-macos/releases/download/v0.1.0/MarkLook-0.1.0.
 ## Developer ID / notarization status
 
 ```text
-Developer ID Application signing: pending until Issue #8
-Notarization: pending until Issue #8
-Stapling: pending until Issue #8
-spctl assessment: pending until Issue #8
+Developer ID Application signing: pending until the public binary release lane passes
+Notarization: pending until the public binary release lane passes
+Stapling: pending until the public binary release lane passes
+spctl assessment: pending until the public binary release lane passes
 ```
