@@ -55,6 +55,7 @@ jobs:
           test -f Scripts/validate-signed-quicklook.sh
           test -f Scripts/validate-public-repo-privacy.sh
           test -f Scripts/validate-package-artifact.sh
+          test -f Scripts/validate-release-candidate.sh
           test -f Scripts/validate-v0.1.0-release-candidate.sh
           test -f Scripts/diagnose-quicklook-selection.sh
           test -f Scripts/diagnose-thumbnail-selection.sh
@@ -87,6 +88,7 @@ jobs:
           sh -n Scripts/diagnose-file.sh
           sh -n Scripts/package-debug.sh
           sh -n Scripts/validate-package-artifact.sh
+          sh -n Scripts/validate-release-candidate.sh
           sh -n Scripts/validate-v0.1.0-release-candidate.sh
           sh -n Scripts/validate-diagnostics-boundaries.sh
           sh -n Scripts/validate-supported-types.sh
@@ -101,13 +103,16 @@ jobs:
           sh -n Scripts/build-local-apple-development.sh
           sh -n Scripts/doctor-signing.sh
           sh -n Tests/Scripts/package-debug-test.sh
+          sh -n Tests/Scripts/release-candidate-gate-test.sh
           sh -n Tests/Scripts/v0.1-release-gate-test.sh
           sh -n Tests/Scripts/quicklook-preview-contract-test.sh
           sh -n Tests/Scripts/validate-signed-quicklook-mode-test.sh
           sh -n Tests/Scripts/public-repo-privacy-test.sh
       - name: Validate packaging scripts
         run: Tests/Scripts/package-debug-test.sh
-      - name: Validate v0.1.0 release gate script
+      - name: Validate release gate script
+        run: Tests/Scripts/release-candidate-gate-test.sh
+      - name: Validate v0.1.0 release gate wrapper
         run: Tests/Scripts/v0.1-release-gate-test.sh
       - name: Validate Quick Look preview contract
         run: Tests/Scripts/quicklook-preview-contract-test.sh
@@ -172,5 +177,5 @@ jobs:
           ! git grep -n "allowRawHTML" -- MarkLookApp PreviewExtension ThumbnailExtension Shared Packages/MarkdownCore Scripts project.yml
           ! git grep -n "allowRemoteResources" -- MarkLookApp PreviewExtension ThumbnailExtension Shared Packages/MarkdownCore Scripts project.yml
           ! git grep -n "Data(contentsOf:" -- PreviewExtension
-      - name: Validate v0.1.0 release candidate gate
-        run: Scripts/validate-v0.1.0-release-candidate.sh --ci
+      - name: Validate release candidate gate
+        run: Scripts/validate-release-candidate.sh --ci

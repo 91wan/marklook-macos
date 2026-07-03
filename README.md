@@ -40,8 +40,8 @@ The app and Quick Look extensions build. MarkdownCore provides a local safe HTML
 ## v0.1.x status
 
 - v0.1.0 is a source/local-validation release candidate.
-- The planned v0.1.1 source/local-validation patch covers thumbnail determinism, public privacy gates, fixed light thumbnail appearance policy docs, and Chinese README coverage.
-- Preview, thumbnail, diagnostics, and debug packaging are covered by the v0.1.0 release candidate gate.
+- v0.1.1 is the current source/local-validation patch tag. It includes thumbnail determinism, public privacy gates, fixed light thumbnail appearance policy docs, and Chinese README coverage.
+- Preview, thumbnail, diagnostics, and debug packaging are covered by the release candidate gate.
 - Public notarized binary distribution is pending Developer ID Application signing, notarization, and stapling.
 - Homebrew cask content remains draft-only until a real release artifact URL and checksum exist.
 
@@ -74,23 +74,23 @@ Scripts/validate-package-artifact.sh dist/MarkLook-0.1.0-debug-<shortsha>/MarkLo
 
 Unsigned CI packages are not launchable trust artifacts. Apple Development packages are local validation only. Public distribution still requires Developer ID Application signing, hardened runtime, notarization, and stapling; see `Docs/signing-notarization.md` and `Docs/release-checklist.md`.
 
-## v0.1.0 release candidate gate
+## Release candidate gate
 
 Run the CI-compatible gate:
 
 ```bash
-Scripts/validate-v0.1.0-release-candidate.sh --ci
+Scripts/validate-release-candidate.sh --ci
 ```
 
 Run the maintainer Mac local gate:
 
 ```bash
-DEVELOPMENT_TEAM=<TEAM_ID> Scripts/validate-v0.1.0-release-candidate.sh --local
+DEVELOPMENT_TEAM=<TEAM_ID> Scripts/validate-release-candidate.sh --local
 ```
 
 The gate does not create tags, publish GitHub Releases, submit Homebrew casks, or claim Developer ID/notarization trust.
 
-For the v0.1.1 source/local-validation patch boundary, see `Docs/v0.1.1-source-local-validation.md`. The `v0.1.1` tag still requires a second explicit owner approval after merge and final latest-main validation.
+`Scripts/validate-v0.1.0-release-candidate.sh` remains as a compatibility wrapper. For the v0.1.1 source/local-validation patch boundary, see `Docs/v0.1.1-source-local-validation.md`.
 
 ## Local development validation with ordinary Apple ID / Personal Team
 

@@ -24,9 +24,9 @@ Use this checklist before preparing a public MarkLook release candidate.
 - Run Finder Space preview validation for representative Markdown files when doing final manual acceptance.
 - Run thumbnail validation with `qlmanage -t -s 512 -o /tmp Samples/basic.md`.
 - Confirm diagnostics dashboard selected-file, reset-cache, and copy-report flows remain accepted.
-- Run `Scripts/validate-v0.1.0-release-candidate.sh --ci`.
-- Run `DEVELOPMENT_TEAM=<TEAM_ID> Scripts/validate-v0.1.0-release-candidate.sh --local` on the maintainer Mac, or record explicit owner deferral.
-- For v0.1.1, reuse `Scripts/validate-v0.1.0-release-candidate.sh` as the established CI/local validation gate unless the gate script is intentionally renamed in a separate cleanup.
+- Run `Scripts/validate-release-candidate.sh --ci`.
+- Run `DEVELOPMENT_TEAM=<TEAM_ID> Scripts/validate-release-candidate.sh --local` on the maintainer Mac, or record explicit owner deferral.
+- `Scripts/validate-v0.1.0-release-candidate.sh` remains as a compatibility wrapper for older automation.
 
 ## Package gates
 
