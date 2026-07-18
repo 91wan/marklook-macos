@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 
 final class PreviewErrorHTMLDocumentTests: XCTestCase {
@@ -24,5 +25,31 @@ final class PreviewErrorHTMLDocumentTests: XCTestCase {
         XCTAssertFalse(html.localizedCaseInsensitiveContains("src="))
         XCTAssertFalse(html.contains("/tmp/marklook-private/private.md"))
         XCTAssertTrue(html.contains("Content-Security-Policy"))
+    }
+
+    func testErrorHTMLDocumentRedactsFileURLPaths() {
+        let privatePath = "/" + ["Users", "example", "Documents", "private.md"].joined(separator: "/")
+        let fileURL = URL(fileURLWithPath: privatePath).absoluteString
+        let html = PreviewErrorHTMLDocument.html(
+            title: "Preview unavailable",
+            message: "Could not read \(fileURL): permission denied"
+        )
+
+        XCTAssertFalse(html.contains(fileURL))
+        XCTAssertFalse(html.contains(privatePath))
+        XCTAssertTrue(html.contains("Could not read private.md: permission denied"))
+    }
+
+    func testErrorHTMLDocumentRedactsPercentEncodedFileURLPaths() {
+        let privatePath = "/" + ["Users", "example", "Private Notes", "review.md"].joined(separator: "/")
+        let fileURL = URL(fileURLWithPath: privatePath).absoluteString
+        let html = PreviewErrorHTMLDocument.html(
+            title: "Preview unavailable",
+            message: "Could not read \(fileURL)"
+        )
+
+        XCTAssertFalse(html.contains(fileURL))
+        XCTAssertFalse(html.contains("Private%20Notes"))
+        XCTAssertTrue(html.contains("Could not read review.md"))
     }
 }

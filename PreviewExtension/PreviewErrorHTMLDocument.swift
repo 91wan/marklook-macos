@@ -83,6 +83,7 @@ enum PreviewErrorHTMLDocument {
     }
 
     private static func redactFullPaths(_ text: String) -> String {
+        let text = redactFileURLs(in: text)
         var output = ""
         var cursor = text.startIndex
 
@@ -107,6 +108,45 @@ enum PreviewErrorHTMLDocument {
 
             let token = String(text[slash..<end])
             output.append(URL(fileURLWithPath: token).lastPathComponent)
+            cursor = end
+        }
+
+        output.append(contentsOf: text[cursor...])
+        return output
+    }
+
+    private static func redactFileURLs(in text: String) -> String {
+        var output = ""
+        var cursor = text.startIndex
+
+        while let scheme = text.range(
+            of: "file://",
+            options: .caseInsensitive,
+            range: cursor..<text.endIndex
+        ) {
+            output.append(contentsOf: text[cursor..<scheme.lowerBound])
+
+            var end = scheme.upperBound
+            while end < text.endIndex {
+                let character = text[end]
+                if character.isWhitespace
+                    || character == "\""
+                    || character == "'"
+                    || character == ")"
+                    || character == "]"
+                    || character == ">"
+                    || character == ":" {
+                    break
+                }
+                end = text.index(after: end)
+            }
+
+            let token = String(text[scheme.lowerBound..<end])
+            if let url = URL(string: token), url.isFileURL, !url.lastPathComponent.isEmpty {
+                output.append(url.lastPathComponent)
+            } else {
+                output.append("<redacted-file>")
+            }
             cursor = end
         }
 
