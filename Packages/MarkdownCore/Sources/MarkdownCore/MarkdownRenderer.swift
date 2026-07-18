@@ -119,6 +119,12 @@ public struct MarkdownRenderer: MarkdownRendering, Sendable {
 }
 
 private struct BlockRenderer {
+    private struct FenceDelimiter {
+        let marker: Character
+        let count: Int
+        let info: String
+    }
+
     private struct ListItem {
         let indent: Int
         let ordered: Bool
@@ -271,13 +277,15 @@ private struct BlockRenderer {
     }
 
     private mutating func renderFencedCode(lines: [String], startIndex: Int) -> (html: String, nextIndex: Int) {
-        let opening = lines[startIndex].trimmingCharacters(in: .whitespaces)
-        let info = String(opening.dropFirst(3)).trimmingCharacters(in: .whitespaces)
+        guard let opening = fenceDelimiter(in: lines[startIndex]) else {
+            return ("", startIndex + 1)
+        }
+
         var codeLines: [String] = []
         var index = startIndex + 1
 
         while index < lines.count {
-            if isFenceStart(lines[index]) {
+            if isClosingFence(lines[index], for: opening) {
                 index += 1
                 break
             }
@@ -286,7 +294,7 @@ private struct BlockRenderer {
             index += 1
         }
 
-        let languageClass = sanitizedLanguageClass(info)
+        let languageClass = sanitizedLanguageClass(opening.info)
         let classAttribute = languageClass.isEmpty ? "" : " class=\"language-\(languageClass)\""
         return ("<pre><code\(classAttribute)>\(ResourcePolicy.escapeHTML(codeLines.joined(separator: "\n")))</code></pre>", index)
     }
@@ -611,7 +619,32 @@ private struct BlockRenderer {
     }
 
     private func isFenceStart(_ line: String) -> Bool {
-        line.trimmingCharacters(in: .whitespaces).hasPrefix("```")
+        fenceDelimiter(in: line) != nil
+    }
+
+    private func fenceDelimiter(in line: String) -> FenceDelimiter? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard let marker = trimmed.first, marker == "`" || marker == "~" else {
+            return nil
+        }
+
+        let count = trimmed.prefix { $0 == marker }.count
+        guard count >= 3 else {
+            return nil
+        }
+
+        let info = String(trimmed.dropFirst(count)).trimmingCharacters(in: .whitespaces)
+        return FenceDelimiter(marker: marker, count: count, info: info)
+    }
+
+    private func isClosingFence(_ line: String, for opening: FenceDelimiter) -> Bool {
+        guard let closing = fenceDelimiter(in: line) else {
+            return false
+        }
+
+        return closing.marker == opening.marker
+            && closing.count >= opening.count
+            && closing.info.isEmpty
     }
 
     private func isHorizontalRule(_ line: String) -> Bool {
