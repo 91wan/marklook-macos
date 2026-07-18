@@ -1,4 +1,5 @@
 @preconcurrency import Foundation
+import Darwin
 
 enum CommandRunner {
     struct CommandResult: Equatable, Sendable {
@@ -63,10 +64,16 @@ enum CommandRunner {
     static func run(
         _ command: DiagnosticsCommand,
         timeout: TimeInterval = 5,
+        terminationGracePeriod: TimeInterval = 0.2,
         outputLimit: Int = 32 * 1024
     ) async -> CommandResult {
         await Task.detached(priority: .utility) {
-            runBlocking(command, timeout: timeout, outputLimit: outputLimit)
+            runBlocking(
+                command,
+                timeout: timeout,
+                terminationGracePeriod: terminationGracePeriod,
+                outputLimit: outputLimit
+            )
         }.value
     }
 
@@ -90,11 +97,16 @@ enum CommandRunner {
     private static func runBlocking(
         _ command: DiagnosticsCommand,
         timeout: TimeInterval,
+        terminationGracePeriod: TimeInterval,
         outputLimit: Int
     ) -> CommandResult {
         let process = Process()
+        let exitSignal = DispatchSemaphore(value: 0)
         process.executableURL = command.executableURL
         process.arguments = command.arguments
+        process.terminationHandler = { _ in
+            exitSignal.signal()
+        }
 
         let outputPipe = Pipe()
         let errorPipe = Pipe()
@@ -133,29 +145,44 @@ enum CommandRunner {
             )
         }
 
-        let deadline = Date().addingTimeInterval(timeout)
         var didTimeout = false
-        while process.isRunning && Date() < deadline {
-            Thread.sleep(forTimeInterval: 0.02)
-        }
+        var didExit = exitSignal.wait(
+            timeout: .now() + max(0, timeout)
+        ) == .success
 
-        if process.isRunning {
+        if !didExit, process.isRunning {
             didTimeout = true
             process.terminate()
+            didExit = exitSignal.wait(
+                timeout: .now() + max(0, terminationGracePeriod)
+            ) == .success
+
+            if !didExit, process.isRunning {
+                _ = Darwin.kill(process.processIdentifier, SIGKILL)
+                didExit = exitSignal.wait(timeout: .now() + 1) == .success
+            }
         }
 
-        process.waitUntilExit()
+        if !didExit, !process.isRunning {
+            didExit = true
+        }
+
+        if didExit {
+            process.waitUntilExit()
+        }
         outputPipe.fileHandleForReading.readabilityHandler = nil
         errorPipe.fileHandleForReading.readabilityHandler = nil
-        outputCollector.append(outputPipe.fileHandleForReading.readDataToEndOfFile(), limit: outputLimit)
-        errorCollector.append(errorPipe.fileHandleForReading.readDataToEndOfFile(), limit: outputLimit)
+        if didExit {
+            outputCollector.append(outputPipe.fileHandleForReading.readDataToEndOfFile(), limit: outputLimit)
+            errorCollector.append(errorPipe.fileHandleForReading.readDataToEndOfFile(), limit: outputLimit)
+        }
 
         let output = outputCollector.output()
         let error = errorCollector.output()
 
         return CommandResult(
             command: command,
-            terminationStatus: process.terminationStatus,
+            terminationStatus: didExit ? process.terminationStatus : nil,
             standardOutput: output.text,
             standardError: error.text,
             didTimeout: didTimeout,
