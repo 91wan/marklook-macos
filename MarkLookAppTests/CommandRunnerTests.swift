@@ -51,10 +51,10 @@ final class CommandRunnerTests: XCTestCase {
 
     func testTimeoutForceKillsProcessThatIgnoresTermination() async {
         let command = DiagnosticsCommand(
-            executablePath: "/usr/bin/python3",
+            executablePath: "/bin/sh",
             arguments: [
                 "-c",
-                "import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(5)",
+                "trap '' TERM; exec /bin/sleep 5",
             ],
             redactedArguments: ["-c", "<timeout fixture>"],
             displayName: "timeout-fixture"
