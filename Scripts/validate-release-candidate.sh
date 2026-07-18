@@ -59,10 +59,12 @@ validate_renderer_security="${MARKLOOK_RC_VALIDATE_RENDERER_SECURITY:-$repo_root
 validate_diagnostics_boundaries="${MARKLOOK_RC_VALIDATE_DIAGNOSTICS_BOUNDARIES:-$repo_root/Scripts/validate-diagnostics-boundaries.sh}"
 validate_thumbnail_boundaries="${MARKLOOK_RC_VALIDATE_THUMBNAIL_BOUNDARIES:-$repo_root/Scripts/validate-thumbnail-boundaries.sh}"
 validate_supported_types="${MARKLOOK_RC_VALIDATE_SUPPORTED_TYPES:-$repo_root/Scripts/validate-supported-types.sh}"
+validate_version_consistency="${MARKLOOK_RC_VALIDATE_VERSION_CONSISTENCY:-$repo_root/Scripts/validate-version-consistency.rb}"
 package_debug_test="${MARKLOOK_RC_PACKAGE_DEBUG_TEST:-$repo_root/Tests/Scripts/package-debug-test.sh}"
 quicklook_preview_contract_test="${MARKLOOK_RC_QUICKLOOK_PREVIEW_CONTRACT_TEST:-$repo_root/Tests/Scripts/quicklook-preview-contract-test.sh}"
 validate_signed_mode_test="${MARKLOOK_RC_VALIDATE_SIGNED_MODE_TEST:-$repo_root/Tests/Scripts/validate-signed-quicklook-mode-test.sh}"
 doctor_signing_test="${MARKLOOK_RC_DOCTOR_SIGNING_TEST:-$repo_root/Tests/Scripts/doctor-signing-team-id-test.sh}"
+version_consistency_test="${MARKLOOK_RC_VERSION_CONSISTENCY_TEST:-$repo_root/Tests/Scripts/version-consistency-test.sh}"
 build_apple_development="${MARKLOOK_RC_BUILD_APPLE_DEVELOPMENT:-$repo_root/Scripts/build-local-apple-development.sh}"
 validate_signed_quicklook="${MARKLOOK_RC_VALIDATE_SIGNED_QUICKLOOK:-$repo_root/Scripts/validate-signed-quicklook.sh}"
 diagnose_thumbnail_selection="${MARKLOOK_RC_DIAGNOSE_THUMBNAIL_SELECTION:-$repo_root/Scripts/diagnose-thumbnail-selection.sh}"
@@ -204,21 +206,25 @@ run_ci_gate() {
   run sh -n Scripts/validate-package-artifact.sh
   run sh -n Scripts/validate-release-candidate.sh
   run sh -n Scripts/validate-v0.1.0-release-candidate.sh
+  run "$ruby_cmd" -c Scripts/validate-version-consistency.rb
   run sh -n Tests/Scripts/package-debug-test.sh
   run sh -n Tests/Scripts/quicklook-preview-contract-test.sh
   run sh -n Tests/Scripts/validate-signed-quicklook-mode-test.sh
   run sh -n Tests/Scripts/doctor-signing-team-id-test.sh
   run sh -n Tests/Scripts/v0.1-release-gate-test.sh
+  run sh -n Tests/Scripts/version-consistency-test.sh
 
   run "$package_debug_test"
   run "$quicklook_preview_contract_test"
   run "$validate_signed_mode_test"
   run "$doctor_signing_test"
+  run "$version_consistency_test"
 
   run "$validate_diagnostics_boundaries"
   run "$validate_thumbnail_boundaries"
   run "$validate_preview_contract"
   run "$validate_supported_types"
+  run "$validate_version_consistency"
 
   run_to_file "$project_dump" "$xcodegen_cmd" dump --spec project.yml
   run "$xcodegen_cmd" generate
