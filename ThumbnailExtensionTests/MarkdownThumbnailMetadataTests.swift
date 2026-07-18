@@ -60,6 +60,23 @@ final class MarkdownThumbnailMetadataTests: XCTestCase {
         XCTAssertFalse(metadata.isUTF8)
     }
 
+    func testTruncatedPrefixEndingInsideUTF8ScalarKeepsValidMetadata() {
+        var data = Data("# 中文标题\n正文".utf8)
+        let partialScalar = Array("中".utf8).prefix(2)
+        data.append(contentsOf: partialScalar)
+
+        let metadata = MarkdownThumbnailMetadata.parsePrefix(
+            data: data,
+            fileName: "large.md",
+            fullFileSize: data.count + 1,
+            maxPrefixBytes: data.count
+        )
+
+        XCTAssertEqual(metadata.heading, "中文标题")
+        XCTAssertTrue(metadata.isTruncated)
+        XCTAssertTrue(metadata.isUTF8)
+    }
+
     func testMarksTruncatedWhenFileSizeExceedsPrefixLimit() {
         let data = Data("# Title\nline 2\nline 3\n".utf8)
         let metadata = MarkdownThumbnailMetadata.parsePrefix(

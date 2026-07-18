@@ -40,7 +40,7 @@ struct MarkdownThumbnailMetadata: Equatable, Sendable {
         let isTruncated = fullFileSize > data.count || fullFileSize > maxPrefixBytes
         let lineCount = approximateLineCount(in: data)
 
-        guard let source = String(data: data, encoding: .utf8) else {
+        guard let source = UTF8PrefixDecoder.decode(data) else {
             return MarkdownThumbnailMetadata(
                 fileName: fileName,
                 fileExtension: fileExtension,
