@@ -159,6 +159,15 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertTrue(result.html.contains(source))
     }
 
+    func testUnclosedBracketKeepsInlineParsingActive() throws {
+        let result = try renderer.render(MarkdownDocument(
+            source: "[see `foo` bar"
+        ))
+
+        XCTAssertTrue(result.html.contains("[see"))
+        XCTAssertTrue(result.html.contains("<code>foo</code>"))
+    }
+
     func testMalformedBracketSequenceDoesNotHideLaterValidLink() throws {
         let result = try renderer.render(MarkdownDocument(
             source: "[[broken] then [site](https://example.com)"
