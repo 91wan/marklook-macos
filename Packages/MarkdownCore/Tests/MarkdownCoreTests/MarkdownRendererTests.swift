@@ -19,6 +19,31 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertFalse(result.html.contains("<p># Title</p>"))
     }
 
+    func testSetextHeadingsRenderAndPopulateTableOfContents() throws {
+        let result = try renderer.render(MarkdownDocument(source: """
+        Primary Title
+        ===
+
+        Secondary Title
+        ---
+        """))
+
+        XCTAssertTrue(result.html.contains("<h1 id=\"primary-title\">Primary Title</h1>"))
+        XCTAssertTrue(result.html.contains("<h2 id=\"secondary-title\">Secondary Title</h2>"))
+        XCTAssertEqual(result.tableOfContents, [
+            TableOfContents.Item(title: "Primary Title", level: 1, id: "primary-title"),
+            TableOfContents.Item(title: "Secondary Title", level: 2, id: "secondary-title")
+        ])
+    }
+
+    func testSetextHeadingRendersInlineMarkup() throws {
+        let result = try renderer.render(MarkdownDocument(source: "Important **Review**\n---"))
+
+        XCTAssertTrue(result.html.contains(
+            "<h2 id=\"important-review\">Important <strong>Review</strong></h2>"
+        ))
+    }
+
     func testUnorderedListRenders() throws {
         let result = try renderer.render(MarkdownDocument(source: "- Alpha\n- Beta"))
 

@@ -233,6 +233,12 @@ private struct BlockRenderer {
                 continue
             }
 
+            if let heading = parseSetextHeading(lines: lines, startIndex: index) {
+                blocks.append(renderHeading(heading))
+                index += 2
+                continue
+            }
+
             if let heading = parseHeading(lines[index]) {
                 blocks.append(renderHeading(heading))
                 index += 1
@@ -616,6 +622,39 @@ private struct BlockRenderer {
         }
 
         return (level, title)
+    }
+
+    private func parseSetextHeading(
+        lines: [String],
+        startIndex: Int
+    ) -> (level: Int, title: String)? {
+        guard startIndex + 1 < lines.count,
+              let level = setextHeadingLevel(lines[startIndex + 1]) else {
+            return nil
+        }
+
+        let title = lines[startIndex].trimmingCharacters(in: .whitespaces)
+        guard !title.isEmpty,
+              parseHeading(title) == nil,
+              !isFenceStart(title),
+              !isHorizontalRule(title),
+              !isBlockquote(title),
+              parseListItem(title) == nil else {
+            return nil
+        }
+
+        return (level, title)
+    }
+
+    private func setextHeadingLevel(_ line: String) -> Int? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard let marker = trimmed.first,
+              marker == "=" || marker == "-",
+              trimmed.allSatisfy({ $0 == marker }) else {
+            return nil
+        }
+
+        return marker == "=" ? 1 : 2
     }
 
     private func isFenceStart(_ line: String) -> Bool {
