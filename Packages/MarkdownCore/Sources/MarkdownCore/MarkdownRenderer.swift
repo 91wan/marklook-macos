@@ -119,6 +119,12 @@ public struct MarkdownRenderer: MarkdownRendering, Sendable {
 }
 
 private struct BlockRenderer {
+    private struct ListItem {
+        let indent: Int
+        let ordered: Bool
+        let content: String
+    }
+
     private enum InlineDelimiter: String {
         case emphasis = "*"
         case strong = "**"
@@ -209,15 +215,8 @@ private struct BlockRenderer {
                 continue
             }
 
-            if parseUnorderedListItem(lines[index]) != nil {
-                let rendered = renderList(lines: lines, startIndex: index, ordered: false)
-                blocks.append(rendered.html)
-                index = rendered.nextIndex
-                continue
-            }
-
-            if parseOrderedListItem(lines[index]) != nil {
-                let rendered = renderList(lines: lines, startIndex: index, ordered: true)
+            if parseListItem(lines[index]) != nil {
+                let rendered = renderList(lines: lines, startIndex: index)
                 blocks.append(rendered.html)
                 index = rendered.nextIndex
                 continue
@@ -317,22 +316,58 @@ private struct BlockRenderer {
         return ("<blockquote>\n<p>\(renderInline(parts.joined(separator: " ")))</p>\n</blockquote>", index)
     }
 
-    private mutating func renderList(lines: [String], startIndex: Int, ordered: Bool) -> (html: String, nextIndex: Int) {
-        var items: [String] = []
+    private mutating func renderList(lines: [String], startIndex: Int) -> (html: String, nextIndex: Int) {
+        guard let firstItem = parseListItem(lines[startIndex]) else {
+            return ("", startIndex)
+        }
+
         var index = startIndex
+        let html = renderListLevel(
+            lines: lines,
+            index: &index,
+            indent: firstItem.indent,
+            ordered: firstItem.ordered
+        )
+        return (html, index)
+    }
+
+    private mutating func renderListLevel(
+        lines: [String],
+        index: inout Int,
+        indent: Int,
+        ordered: Bool
+    ) -> String {
+        var items: [String] = []
 
         while index < lines.count {
-            let content = ordered ? parseOrderedListItem(lines[index]) : parseUnorderedListItem(lines[index])
-            guard let content else {
+            guard let item = parseListItem(lines[index]),
+                  item.indent == indent,
+                  item.ordered == ordered else {
                 break
             }
 
-            items.append("<li>\(renderListItemContent(content))</li>")
+            var itemHTML = "<li>\(renderListItemContent(item.content))"
+            var hasNestedList = false
             index += 1
+
+            while index < lines.count,
+                  let child = parseListItem(lines[index]),
+                  child.indent > indent {
+                hasNestedList = true
+                itemHTML += "\n" + renderListLevel(
+                    lines: lines,
+                    index: &index,
+                    indent: child.indent,
+                    ordered: child.ordered
+                )
+            }
+
+            itemHTML += hasNestedList ? "\n</li>" : "</li>"
+            items.append(itemHTML)
         }
 
         let tag = ordered ? "ol" : "ul"
-        return ("<\(tag)>\n\(items.joined(separator: "\n"))\n</\(tag)>", index)
+        return "<\(tag)>\n\(items.joined(separator: "\n"))\n</\(tag)>"
     }
 
     private mutating func renderListItemContent(_ content: String) -> String {
@@ -560,19 +595,52 @@ private struct BlockRenderer {
     }
 
     private func parseUnorderedListItem(_ line: String) -> String? {
-        let trimmed = line.trimmingCharacters(in: .whitespaces)
-        for marker in ["- ", "* ", "+ "] where trimmed.hasPrefix(marker) {
-            return String(trimmed.dropFirst(marker.count))
+        guard let item = parseListItem(line), !item.ordered else {
+            return nil
         }
-        return nil
+        return item.content
     }
 
     private func parseOrderedListItem(_ line: String) -> String? {
-        let trimmed = line.trimmingCharacters(in: .whitespaces)
-        guard let markerRange = trimmed.range(of: #"^\d+[.)]\s+"#, options: .regularExpression) else {
+        guard let item = parseListItem(line), item.ordered else {
             return nil
         }
-        return String(trimmed[markerRange.upperBound...])
+        return item.content
+    }
+
+    private func parseListItem(_ line: String) -> ListItem? {
+        var indent = 0
+        var cursor = line.startIndex
+
+        while cursor < line.endIndex {
+            if line[cursor] == " " {
+                indent += 1
+            } else if line[cursor] == "\t" {
+                indent += 4
+            } else {
+                break
+            }
+            cursor = line.index(after: cursor)
+        }
+
+        let body = String(line[cursor...])
+        for marker in ["- ", "* ", "+ "] where body.hasPrefix(marker) {
+            return ListItem(
+                indent: indent,
+                ordered: false,
+                content: String(body.dropFirst(marker.count))
+            )
+        }
+
+        guard let markerRange = body.range(of: #"^\d+[.)]\s+"#, options: .regularExpression) else {
+            return nil
+        }
+
+        return ListItem(
+            indent: indent,
+            ordered: true,
+            content: String(body[markerRange.upperBound...])
+        )
     }
 
     private func parseTableRow(_ line: String) -> [String]? {
