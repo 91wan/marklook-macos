@@ -15,14 +15,14 @@ final class PreviewViewController: QLPreviewProvider, QLPreviewingController {
     ) {
         let url = request.fileURL
         let fileName = url.lastPathComponent
-        AppLog.preview.info("providePreview start file=\(fileName, privacy: .public)")
+        AppLog.preview.info("providePreview start file=\(fileName, privacy: .private)")
 
         let preview = pipeline.preview(for: url) { event in
             switch event {
             case .loadedDocument:
-                AppLog.preview.info("load document success file=\(fileName, privacy: .public)")
+                AppLog.preview.info("load document success file=\(fileName, privacy: .private)")
             case .renderedHTML:
-                AppLog.preview.info("render success file=\(fileName, privacy: .public)")
+                AppLog.preview.info("render success file=\(fileName, privacy: .private)")
             }
         }
 
@@ -30,13 +30,13 @@ final class PreviewViewController: QLPreviewProvider, QLPreviewingController {
         switch preview {
         case let .htmlDocument(document):
             html = document
-            AppLog.preview.info("html document ready file=\(fileName, privacy: .public) htmlBytes=\(document.utf8.count, privacy: .public)")
+            AppLog.preview.info("html document ready file=\(fileName, privacy: .private) htmlBytes=\(document.utf8.count, privacy: .public)")
         case let .error(title, message):
             html = PreviewErrorHTMLDocument.html(
                 title: title,
                 message: message
             )
-            AppLog.preview.error("error html ready file=\(fileName, privacy: .public) title=\(title, privacy: .public)")
+            AppLog.preview.error("error html ready file=\(fileName, privacy: .private) title=\(title, privacy: .public)")
         }
 
         let reply = QLPreviewReply(
