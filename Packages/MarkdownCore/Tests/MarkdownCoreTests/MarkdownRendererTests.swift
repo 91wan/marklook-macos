@@ -141,6 +141,43 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertTrue(result.html.contains("&lt;script&gt;<strong>alert</strong>&lt;/script&gt;"))
     }
 
+    func testManyUnclosedLinkOpenersRenderAsLiteralText() throws {
+        let source = String(repeating: "[", count: 100_000)
+
+        let result = try renderer.render(MarkdownDocument(source: source))
+
+        XCTAssertFalse(result.usedFastMode)
+        XCTAssertTrue(result.html.contains(source))
+    }
+
+    func testManyUnclosedLinkTargetsRenderAsLiteralText() throws {
+        let source = String(repeating: "[x](", count: 20_000)
+
+        let result = try renderer.render(MarkdownDocument(source: source))
+
+        XCTAssertFalse(result.usedFastMode)
+        XCTAssertTrue(result.html.contains(source))
+    }
+
+    func testUnclosedBracketKeepsInlineParsingActive() throws {
+        let result = try renderer.render(MarkdownDocument(
+            source: "[see `foo` bar"
+        ))
+
+        XCTAssertTrue(result.html.contains("[see"))
+        XCTAssertTrue(result.html.contains("<code>foo</code>"))
+    }
+
+    func testMalformedBracketSequenceDoesNotHideLaterValidLink() throws {
+        let result = try renderer.render(MarkdownDocument(
+            source: "[[broken] then [site](https://example.com)"
+        ))
+
+        XCTAssertTrue(result.html.contains("[[broken] then"))
+        XCTAssertTrue(result.html.contains("class=\"markdown-link\""))
+        XCTAssertTrue(result.html.contains("data-url=\"https://example.com\""))
+    }
+
     func testGFMTableRenders() throws {
         let result = try renderer.render(MarkdownDocument(source: """
         | Name | Status |

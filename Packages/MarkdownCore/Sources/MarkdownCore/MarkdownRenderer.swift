@@ -161,6 +161,37 @@ private struct BlockRenderer {
         let pieceIndex: Int
     }
 
+    private struct InlineParseIndex {
+        let closingBracketByOpening: [String.Index: String.Index]
+        let closingParenthesisByOpening: [String.Index: String.Index]
+
+        init(text: String) {
+            var bracketMatches: [String.Index: String.Index] = [:]
+            var nextClosingBracket: String.Index?
+
+            for index in text.indices.reversed() {
+                if text[index] == "]" {
+                    nextClosingBracket = index
+                } else if text[index] == "[", let nextClosingBracket {
+                    bracketMatches[index] = nextClosingBracket
+                }
+            }
+
+            var parenthesisMatches: [String.Index: String.Index] = [:]
+            var openParentheses: [String.Index] = []
+            for index in text.indices {
+                if text[index] == "(" {
+                    openParentheses.append(index)
+                } else if text[index] == ")", let opening = openParentheses.popLast() {
+                    parenthesisMatches[opening] = index
+                }
+            }
+
+            closingBracketByOpening = bracketMatches
+            closingParenthesisByOpening = parenthesisMatches
+        }
+    }
+
     let options: RenderOptions
     var diagnostics: [RenderDiagnostic] = []
     var tableOfContents: [TableOfContents.Item] = []
@@ -409,6 +440,7 @@ private struct BlockRenderer {
 
     private mutating func renderInline(_ text: String) -> String {
         let policy = ResourcePolicy()
+        let parseIndex = InlineParseIndex(text: text)
         var output = ""
         var buffer = ""
         var cursor = text.startIndex
@@ -432,7 +464,7 @@ private struct BlockRenderer {
             }
 
             if text[cursor] == "!",
-               let image = parseImage(in: text, at: cursor) {
+               let image = parseImage(in: text, at: cursor, parseIndex: parseIndex) {
                 flushBuffer()
                 output += policy.renderImage(alt: image.alt, url: image.url, diagnostics: &diagnostics)
                 cursor = image.nextIndex
@@ -440,7 +472,7 @@ private struct BlockRenderer {
             }
 
             if text[cursor] == "[",
-               let link = parseLink(in: text, at: cursor) {
+               let link = parseBracketedTarget(in: text, openingBracket: cursor, parseIndex: parseIndex) {
                 flushBuffer()
                 let labelHTML = renderTextMarkup(link.label, policy: policy)
                 output += policy.renderLink(labelHTML: labelHTML, url: link.url, diagnostics: &diagnostics)
@@ -672,38 +704,40 @@ private struct BlockRenderer {
         }
     }
 
-    private func parseImage(in text: String, at index: String.Index) -> (alt: String, url: String, nextIndex: String.Index)? {
+    private func parseImage(
+        in text: String,
+        at index: String.Index,
+        parseIndex: InlineParseIndex
+    ) -> (alt: String, url: String, nextIndex: String.Index)? {
         let bracketStart = text.index(after: index)
         guard bracketStart < text.endIndex, text[bracketStart] == "[" else {
             return nil
         }
 
-        guard let parsed = parseBracketedTarget(in: text, labelStart: text.index(after: bracketStart)) else {
+        guard let parsed = parseBracketedTarget(in: text, openingBracket: bracketStart, parseIndex: parseIndex) else {
             return nil
         }
 
         return (parsed.label, parsed.url, parsed.nextIndex)
     }
 
-    private func parseLink(in text: String, at index: String.Index) -> (label: String, url: String, nextIndex: String.Index)? {
-        parseBracketedTarget(in: text, labelStart: text.index(after: index))
-    }
-
     private func parseBracketedTarget(
         in text: String,
-        labelStart: String.Index
+        openingBracket: String.Index,
+        parseIndex: InlineParseIndex
     ) -> (label: String, url: String, nextIndex: String.Index)? {
-        guard let labelEnd = text[labelStart...].firstIndex(of: "]") else {
+        guard let labelEnd = parseIndex.closingBracketByOpening[openingBracket] else {
             return nil
         }
 
+        let labelStart = text.index(after: openingBracket)
         let parenthesisStart = text.index(after: labelEnd)
         guard parenthesisStart < text.endIndex, text[parenthesisStart] == "(" else {
             return nil
         }
 
         let urlStart = text.index(after: parenthesisStart)
-        guard let urlEnd = closingParenthesis(in: text, from: urlStart) else {
+        guard let urlEnd = parseIndex.closingParenthesisByOpening[parenthesisStart] else {
             return nil
         }
 
@@ -712,25 +746,6 @@ private struct BlockRenderer {
             String(text[urlStart..<urlEnd]),
             text.index(after: urlEnd)
         )
-    }
-
-    private func closingParenthesis(in text: String, from start: String.Index) -> String.Index? {
-        var depth = 0
-        var cursor = start
-
-        while cursor < text.endIndex {
-            if text[cursor] == "(" {
-                depth += 1
-            } else if text[cursor] == ")" {
-                if depth == 0 {
-                    return cursor
-                }
-                depth -= 1
-            }
-            cursor = text.index(after: cursor)
-        }
-
-        return nil
     }
 
     private func sanitizedLanguageClass(_ info: String) -> String {
