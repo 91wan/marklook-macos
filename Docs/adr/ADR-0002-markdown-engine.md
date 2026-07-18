@@ -35,6 +35,8 @@ GFM support level for v0.1:
 - blockquotes
 - fenced code blocks
 - inline code
+- emphasis and strong emphasis
+- GFM strikethrough
 - GFM-style tables
 - GFM task lists
 - horizontal rules
