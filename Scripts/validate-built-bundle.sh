@@ -21,6 +21,18 @@ plutil -lint "$app/Contents/Info.plist"
 plutil -lint "$preview/Contents/Info.plist"
 plutil -lint "$thumbnail/Contents/Info.plist"
 
+app_marketing_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")"
+app_build_number="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Contents/Info.plist")"
+for extension in "$preview" "$thumbnail"; do
+  extension_marketing_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$extension/Contents/Info.plist")"
+  extension_build_number="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$extension/Contents/Info.plist")"
+  if [ "$extension_marketing_version" != "$app_marketing_version" ] || \
+    [ "$extension_build_number" != "$app_build_number" ]; then
+    echo "error: $(basename "$extension") version $extension_marketing_version ($extension_build_number) does not match app $app_marketing_version ($app_build_number)" >&2
+    exit 1
+  fi
+done
+
 "$repo_root/Scripts/validate-quicklook-preview-contract.sh" "$app"
 
 /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist" | grep -q '^com.91wan.MarkLook$'

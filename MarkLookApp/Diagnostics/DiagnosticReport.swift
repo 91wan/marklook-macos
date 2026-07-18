@@ -1,6 +1,7 @@
 import Foundation
 
 struct DiagnosticReport: Sendable {
+    var version: Version
     var generatedAt: Date
     var supportedContentTypes: [String]
     var supportedFileExtensions: [String]
@@ -10,6 +11,7 @@ struct DiagnosticReport: Sendable {
     var resetResults: [CommandRunner.CommandResult]
 
     init(
+        version: Version = .current,
         generatedAt: Date = Date(),
         supportedContentTypes: [String] = SupportedTypes.contentTypes,
         supportedFileExtensions: [String] = SupportedTypes.fileExtensions,
@@ -18,6 +20,7 @@ struct DiagnosticReport: Sendable {
         selectedFile: FileDiagnostic? = nil,
         resetResults: [CommandRunner.CommandResult] = []
     ) {
+        self.version = version
         self.generatedAt = generatedAt
         self.supportedContentTypes = supportedContentTypes
         self.supportedFileExtensions = supportedFileExtensions
@@ -30,7 +33,7 @@ struct DiagnosticReport: Sendable {
     var text: String {
         var lines = [
             "MarkLook diagnostics report",
-            "Version: \(Version.marketingVersion) (\(Version.buildNumber))",
+            "Version: \(version.marketingVersion) (\(version.buildNumber))",
             "Generated: \(generatedAt.ISO8601Format())",
             "Release caveat: Public distribution still requires Developer ID Application signing, notarization, and stapling.",
             "",

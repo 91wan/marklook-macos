@@ -29,6 +29,7 @@ final class DiagnosticsReportTests: XCTestCase {
             fullMDLSCommand: "mdls -name kMDItemContentType -name kMDItemContentTypeTree /tmp/marklook-private/Secret/basic.md"
         )
         let report = DiagnosticReport(
+            version: Version(marketingVersion: "9.8.7", buildNumber: "654"),
             generatedAt: Date(timeIntervalSince1970: 1_783_000_000),
             supportedContentTypes: ["public.markdown"],
             supportedFileExtensions: ["md"],
@@ -49,7 +50,7 @@ final class DiagnosticsReportTests: XCTestCase {
 
         let text = report.text
 
-        XCTAssertTrue(text.contains("Version: 0.1.0 (1)"))
+        XCTAssertTrue(text.contains("Version: 9.8.7 (654)"))
         XCTAssertTrue(text.contains("Generated:"))
         XCTAssertTrue(text.contains("Supported content types:"))
         XCTAssertTrue(text.contains("- public.markdown"))
@@ -61,5 +62,39 @@ final class DiagnosticsReportTests: XCTestCase {
         XCTAssertTrue(text.contains("kMDItemContentType: public.markdown"))
         XCTAssertTrue(text.contains("Release caveat: Public distribution still requires Developer ID Application signing, notarization, and stapling."))
         XCTAssertFalse(text.contains("/tmp/marklook-private/Secret/basic.md"))
+    }
+
+    func testVersionReadsBundleMetadata() throws {
+        let bundleURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            .appendingPathComponent("VersionFixture.bundle", isDirectory: true)
+        let contentsURL = bundleURL.appendingPathComponent("Contents", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: contentsURL,
+            withIntermediateDirectories: true
+        )
+        defer {
+            try? FileManager.default.removeItem(at: bundleURL.deletingLastPathComponent())
+        }
+
+        let info: [String: Any] = [
+            "CFBundleIdentifier": "com.91wan.MarkLook.VersionFixture",
+            "CFBundlePackageType": "BNDL",
+            "CFBundleShortVersionString": "9.8.7",
+            "CFBundleVersion": "654"
+        ]
+        let plist = try PropertyListSerialization.data(
+            fromPropertyList: info,
+            format: .xml,
+            options: 0
+        )
+        try plist.write(to: contentsURL.appendingPathComponent("Info.plist"))
+
+        let bundle = try XCTUnwrap(Bundle(url: bundleURL))
+
+        XCTAssertEqual(
+            Version(bundle: bundle),
+            Version(marketingVersion: "9.8.7", buildNumber: "654")
+        )
     }
 }

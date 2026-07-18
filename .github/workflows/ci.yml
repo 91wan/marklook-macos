@@ -48,6 +48,7 @@ jobs:
           test -f MarkLookApp/MarkLook.entitlements
           test -f Scripts/validate-diagnostics-boundaries.sh
           test -f Scripts/validate-supported-types.sh
+          test -f Scripts/validate-version-consistency.rb
           test -f Scripts/validate-built-bundle.sh
           test -f Scripts/validate-quicklook-preview-contract.sh
           test -f Scripts/validate-thumbnail-boundaries.sh
@@ -61,6 +62,7 @@ jobs:
           test -f Scripts/diagnose-thumbnail-selection.sh
           test -f Scripts/build-local-apple-development.sh
           test -f Scripts/doctor-signing.sh
+          test -f Tests/Scripts/version-consistency-test.sh
       - name: Validate plists and entitlements
         run: |
           plutil -lint MarkLookApp/Info.plist
@@ -79,6 +81,7 @@ jobs:
           Scripts/validate-supported-types.sh
           Scripts/validate-quicklook-preview-contract.sh
           Scripts/validate-thumbnail-boundaries.sh
+          Scripts/validate-version-consistency.rb
           ! grep -R "com.apple.security.network.client" . --include="*.entitlements"
           ! grep -R "public.plain-text" PreviewExtension ThumbnailExtension
       - name: Validate shell scripts
@@ -108,10 +111,14 @@ jobs:
           sh -n Tests/Scripts/quicklook-preview-contract-test.sh
           sh -n Tests/Scripts/validate-signed-quicklook-mode-test.sh
           sh -n Tests/Scripts/public-repo-privacy-test.sh
+          sh -n Tests/Scripts/version-consistency-test.sh
+          ruby -c Scripts/validate-version-consistency.rb
       - name: Validate packaging scripts
         run: Tests/Scripts/package-debug-test.sh
       - name: Validate release gate script
         run: Tests/Scripts/release-candidate-gate-test.sh
+      - name: Validate version consistency gate
+        run: Tests/Scripts/version-consistency-test.sh
       - name: Validate v0.1.0 release gate wrapper
         run: Tests/Scripts/v0.1-release-gate-test.sh
       - name: Validate Quick Look preview contract
