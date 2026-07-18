@@ -127,7 +127,6 @@ enum PreviewErrorHTMLDocument {
             output.append(contentsOf: text[cursor..<scheme.lowerBound])
 
             var end = scheme.upperBound
-            var isInsideBracketedAuthority = false
             while end < text.endIndex {
                 let character = text[end]
                 if character.isWhitespace
@@ -137,32 +136,44 @@ enum PreviewErrorHTMLDocument {
                     || character == ">" {
                     break
                 }
-
-                if character == "[", end == scheme.upperBound {
-                    isInsideBracketedAuthority = true
-                } else if character == "]" {
-                    if isInsideBracketedAuthority {
-                        isInsideBracketedAuthority = false
-                    } else {
-                        break
-                    }
-                } else if character == ":", !isInsideBracketedAuthority {
-                    break
-                }
-
                 end = text.index(after: end)
             }
 
-            let token = String(text[scheme.lowerBound..<end])
+            let rawToken = String(text[scheme.lowerBound..<end])
+            let (token, punctuation) = splitTerminalPunctuation(from: rawToken)
             if let url = URL(string: token), url.isFileURL, !url.lastPathComponent.isEmpty {
                 output.append(url.lastPathComponent)
             } else {
                 output.append("<redacted-file>")
             }
+            output.append(punctuation)
             cursor = end
         }
 
         output.append(contentsOf: text[cursor...])
         return output
+    }
+
+    private static func splitTerminalPunctuation(from token: String) -> (String, String) {
+        var urlEnd = token.endIndex
+
+        while urlEnd > token.startIndex {
+            let previous = token.index(before: urlEnd)
+            guard isTerminalURLPunctuation(token[previous]) else {
+                break
+            }
+            urlEnd = previous
+        }
+
+        return (String(token[..<urlEnd]), String(token[urlEnd...]))
+    }
+
+    private static func isTerminalURLPunctuation(_ character: Character) -> Bool {
+        switch character {
+        case ":", ",", ";", ".", "!", "?", "]":
+            true
+        default:
+            false
+        }
     }
 }

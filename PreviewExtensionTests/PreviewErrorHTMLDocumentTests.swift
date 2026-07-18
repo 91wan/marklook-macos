@@ -66,4 +66,43 @@ final class PreviewErrorHTMLDocumentTests: XCTestCase {
         XCTAssertFalse(html.contains("[::1]"))
         XCTAssertTrue(html.contains("Could not read private.md: permission denied"))
     }
+
+    func testErrorHTMLDocumentRedactsWindowsDriveFileURLPaths() {
+        let privatePath = "/" + ["Users", "example", "Documents", "private.md"].joined(separator: "/")
+        let fileURL = "file:///C:\(privatePath)"
+        let html = PreviewErrorHTMLDocument.html(
+            title: "Preview unavailable",
+            message: "Could not read \(fileURL): permission denied"
+        )
+
+        XCTAssertFalse(html.contains(fileURL))
+        XCTAssertFalse(html.contains(privatePath))
+        XCTAssertTrue(html.contains("Could not read private.md: permission denied"))
+    }
+
+    func testErrorHTMLDocumentRedactsColonAuthorityFileURLPaths() {
+        let privatePath = "/" + ["Users", "example", "Documents", "private.md"].joined(separator: "/")
+        let fileURL = "file://host:8443\(privatePath)"
+        let html = PreviewErrorHTMLDocument.html(
+            title: "Preview unavailable",
+            message: "Could not read \(fileURL): permission denied"
+        )
+
+        XCTAssertFalse(html.contains(fileURL))
+        XCTAssertFalse(html.contains(privatePath))
+        XCTAssertTrue(html.contains("Could not read private.md: permission denied"))
+    }
+
+    func testErrorHTMLDocumentRedactsEntireMalformedFileURLToken() {
+        let privatePath = "/" + ["Users", "example", "Documents", "private.md"].joined(separator: "/")
+        let malformedFileURL = "file://[::1\(privatePath)"
+        let html = PreviewErrorHTMLDocument.html(
+            title: "Preview unavailable",
+            message: "Could not read \(malformedFileURL): permission denied"
+        )
+
+        XCTAssertFalse(html.contains(malformedFileURL))
+        XCTAssertFalse(html.contains(privatePath))
+        XCTAssertTrue(html.contains("Could not read &lt;redacted-file&gt;: permission denied"))
+    }
 }
