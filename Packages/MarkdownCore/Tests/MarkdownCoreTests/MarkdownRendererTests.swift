@@ -53,6 +53,54 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertTrue(result.html.contains("<code>swift test</code>"))
     }
 
+    func testStrongAndEmphasisRender() throws {
+        let result = try renderer.render(MarkdownDocument(
+            source: "Use **strong** and *emphasis* in review docs."
+        ))
+
+        XCTAssertTrue(result.html.contains("<strong>strong</strong>"))
+        XCTAssertTrue(result.html.contains("<em>emphasis</em>"))
+    }
+
+    func testNestedStrongAndEmphasisRender() throws {
+        let result = try renderer.render(MarkdownDocument(
+            source: "**Strong with *nested emphasis*.**"
+        ))
+
+        XCTAssertTrue(result.html.contains(
+            "<strong>Strong with <em>nested emphasis</em>.</strong>"
+        ))
+    }
+
+    func testStrikethroughRenders() throws {
+        let result = try renderer.render(MarkdownDocument(source: "~~obsolete~~ current"))
+
+        XCTAssertTrue(result.html.contains("<del>obsolete</del> current"))
+    }
+
+    func testUnclosedEmphasisDelimiterStaysLiteral() throws {
+        let result = try renderer.render(MarkdownDocument(source: "Keep **unclosed literal"))
+
+        XCTAssertTrue(result.html.contains("Keep **unclosed literal"))
+        XCTAssertFalse(result.html.contains("<strong>"))
+    }
+
+    func testInlineCodeTakesPrecedenceOverEmphasis() throws {
+        let result = try renderer.render(MarkdownDocument(source: "`**literal**` and **strong**"))
+
+        XCTAssertTrue(result.html.contains("<code>**literal**</code>"))
+        XCTAssertTrue(result.html.contains("<strong>strong</strong>"))
+    }
+
+    func testRawHTMLAroundEmphasisRemainsEscaped() throws {
+        let result = try renderer.render(MarkdownDocument(
+            source: "<script>**alert**</script>"
+        ))
+
+        XCTAssertFalse(result.html.localizedCaseInsensitiveContains("<script"))
+        XCTAssertTrue(result.html.contains("&lt;script&gt;<strong>alert</strong>&lt;/script&gt;"))
+    }
+
     func testGFMTableRenders() throws {
         let result = try renderer.render(MarkdownDocument(source: """
         | Name | Status |

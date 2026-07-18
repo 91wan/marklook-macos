@@ -119,6 +119,42 @@ public struct MarkdownRenderer: MarkdownRendering, Sendable {
 }
 
 private struct BlockRenderer {
+    private enum InlineDelimiter: String {
+        case emphasis = "*"
+        case strong = "**"
+        case strikethrough = "~~"
+
+        var openingTag: String {
+            switch self {
+            case .emphasis: "<em>"
+            case .strong: "<strong>"
+            case .strikethrough: "<del>"
+            }
+        }
+
+        var closingTag: String {
+            switch self {
+            case .emphasis: "</em>"
+            case .strong: "</strong>"
+            case .strikethrough: "</del>"
+            }
+        }
+
+        var width: Int {
+            rawValue.count
+        }
+    }
+
+    private enum InlinePiece {
+        case text(String)
+        case html(String)
+    }
+
+    private struct OpenDelimiter {
+        let delimiter: InlineDelimiter
+        let pieceIndex: Int
+    }
+
     let options: RenderOptions
     var diagnostics: [RenderDiagnostic] = []
     var tableOfContents: [TableOfContents.Item] = []
@@ -346,7 +382,7 @@ private struct BlockRenderer {
             guard !buffer.isEmpty else {
                 return
             }
-            output += policy.sanitizeText(buffer, diagnostics: &diagnostics)
+            output += renderTextMarkup(buffer, policy: policy)
             buffer.removeAll(keepingCapacity: true)
         }
 
@@ -371,7 +407,7 @@ private struct BlockRenderer {
             if text[cursor] == "[",
                let link = parseLink(in: text, at: cursor) {
                 flushBuffer()
-                let labelHTML = policy.sanitizeText(link.label, diagnostics: &diagnostics)
+                let labelHTML = renderTextMarkup(link.label, policy: policy)
                 output += policy.renderLink(labelHTML: labelHTML, url: link.url, diagnostics: &diagnostics)
                 cursor = link.nextIndex
                 continue
@@ -382,6 +418,96 @@ private struct BlockRenderer {
         }
 
         flushBuffer()
+        return output
+    }
+
+    private mutating func renderTextMarkup(_ text: String, policy: ResourcePolicy) -> String {
+        var pieces: [InlinePiece] = []
+        var openDelimiters: [OpenDelimiter] = []
+        var buffer = ""
+        var cursor = text.startIndex
+
+        func flushBuffer() {
+            guard !buffer.isEmpty else {
+                return
+            }
+            pieces.append(.text(buffer))
+            buffer.removeAll(keepingCapacity: true)
+        }
+
+        func open(_ delimiter: InlineDelimiter) {
+            pieces.append(.text(delimiter.rawValue))
+            openDelimiters.append(OpenDelimiter(delimiter: delimiter, pieceIndex: pieces.count - 1))
+        }
+
+        func close(_ delimiter: InlineDelimiter) {
+            let opener = openDelimiters.removeLast()
+            pieces[opener.pieceIndex] = .html(delimiter.openingTag)
+            pieces.append(.html(delimiter.closingTag))
+        }
+
+        while cursor < text.endIndex {
+            let marker = text[cursor]
+            guard marker == "*" || marker == "~" else {
+                buffer.append(marker)
+                cursor = text.index(after: cursor)
+                continue
+            }
+
+            let runStart = cursor
+            while cursor < text.endIndex, text[cursor] == marker {
+                cursor = text.index(after: cursor)
+            }
+
+            var remaining = text.distance(from: runStart, to: cursor)
+            if marker == "~", remaining < InlineDelimiter.strikethrough.width {
+                buffer.append(contentsOf: String(repeating: "~", count: remaining))
+                continue
+            }
+
+            flushBuffer()
+            let previous = runStart > text.startIndex ? text[text.index(before: runStart)] : nil
+            let next = cursor < text.endIndex ? text[cursor] : nil
+            let canClose = previous.map { !$0.isWhitespace } ?? false
+            let canOpen = next.map { !$0.isWhitespace } ?? false
+
+            if canClose {
+                while let opener = openDelimiters.last,
+                      opener.delimiter.rawValue.first == marker,
+                      opener.delimiter.width <= remaining {
+                    close(opener.delimiter)
+                    remaining -= opener.delimiter.width
+                }
+            }
+
+            if canOpen {
+                let doubleDelimiter: InlineDelimiter = marker == "*" ? .strong : .strikethrough
+                while remaining >= doubleDelimiter.width {
+                    open(doubleDelimiter)
+                    remaining -= doubleDelimiter.width
+                }
+                if marker == "*", remaining == InlineDelimiter.emphasis.width {
+                    open(.emphasis)
+                    remaining = 0
+                }
+            }
+
+            if remaining > 0 {
+                pieces.append(.text(String(repeating: String(marker), count: remaining)))
+            }
+        }
+
+        flushBuffer()
+
+        var output = ""
+        for piece in pieces {
+            switch piece {
+            case let .text(value):
+                output += policy.sanitizeText(value, diagnostics: &diagnostics)
+            case let .html(value):
+                output += value
+            }
+        }
         return output
     }
 
