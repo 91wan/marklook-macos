@@ -52,4 +52,18 @@ final class PreviewErrorHTMLDocumentTests: XCTestCase {
         XCTAssertFalse(html.contains("Private%20Notes"))
         XCTAssertTrue(html.contains("Could not read review.md"))
     }
+
+    func testErrorHTMLDocumentRedactsIPv6AuthorityFileURLPaths() {
+        let privatePath = "/" + ["Users", "example", "Documents", "private.md"].joined(separator: "/")
+        let fileURL = "file://[::1]\(privatePath)"
+        let html = PreviewErrorHTMLDocument.html(
+            title: "Preview unavailable",
+            message: "Could not read \(fileURL): permission denied"
+        )
+
+        XCTAssertFalse(html.contains(fileURL))
+        XCTAssertFalse(html.contains(privatePath))
+        XCTAssertFalse(html.contains("[::1]"))
+        XCTAssertTrue(html.contains("Could not read private.md: permission denied"))
+    }
 }

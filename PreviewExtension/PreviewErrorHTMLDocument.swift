@@ -127,17 +127,29 @@ enum PreviewErrorHTMLDocument {
             output.append(contentsOf: text[cursor..<scheme.lowerBound])
 
             var end = scheme.upperBound
+            var isInsideBracketedAuthority = false
             while end < text.endIndex {
                 let character = text[end]
                 if character.isWhitespace
                     || character == "\""
                     || character == "'"
                     || character == ")"
-                    || character == "]"
-                    || character == ">"
-                    || character == ":" {
+                    || character == ">" {
                     break
                 }
+
+                if character == "[", end == scheme.upperBound {
+                    isInsideBracketedAuthority = true
+                } else if character == "]" {
+                    if isInsideBracketedAuthority {
+                        isInsideBracketedAuthority = false
+                    } else {
+                        break
+                    }
+                } else if character == ":", !isInsideBracketedAuthority {
+                    break
+                }
+
                 end = text.index(after: end)
             }
 
