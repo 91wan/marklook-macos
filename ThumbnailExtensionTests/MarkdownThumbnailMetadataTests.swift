@@ -7,6 +7,13 @@ final class MarkdownThumbnailMetadataTests: XCTestCase {
         XCTAssertEqual(metadata.heading, "Project Plan")
     }
 
+    func testExtractsFirstHeadingAfterUTF8ByteOrderMark() {
+        let metadata = parse("\u{FEFF}# Windows Export")
+
+        XCTAssertEqual(metadata.heading, "Windows Export")
+        XCTAssertTrue(metadata.isUTF8)
+    }
+
     func testExtractsFirstH2WhenNoH1Exists() {
         let metadata = parse("Intro\n\n## Implementation Notes\n\nBody")
 

@@ -12,6 +12,13 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertTrue(result.html.contains("<h3 id=\"three\">Three</h3>"))
     }
 
+    func testLeadingUTF8ByteOrderMarkDoesNotHideFirstHeading() throws {
+        let result = try renderer.render(MarkdownDocument(source: "\u{FEFF}# Title"))
+
+        XCTAssertTrue(result.html.contains("<h1 id=\"title\">Title</h1>"))
+        XCTAssertFalse(result.html.contains("<p># Title</p>"))
+    }
+
     func testUnorderedListRenders() throws {
         let result = try renderer.render(MarkdownDocument(source: "- Alpha\n- Beta"))
 

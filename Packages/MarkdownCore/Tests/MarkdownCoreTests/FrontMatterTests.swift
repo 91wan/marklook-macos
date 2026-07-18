@@ -15,6 +15,20 @@ final class FrontMatterTests: XCTestCase {
         XCTAssertEqual(document.frontMatter?.fields["author"], "MarkLook")
     }
 
+    func testParsesFrontMatterAfterUTF8ByteOrderMark() {
+        let source = """
+        \u{FEFF}---
+        title: Windows Export
+        ---
+        # Body
+        """
+        let document = MarkdownDocument(source: source)
+
+        XCTAssertEqual(document.frontMatter?.fields["title"], "Windows Export")
+        XCTAssertEqual(document.source, "# Body")
+        XCTAssertEqual(document.sourceByteCount, source.utf8.count)
+    }
+
     func testPreservesMarkdownBodyAfterFrontMatter() {
         let document = MarkdownDocument(source: """
         ---
