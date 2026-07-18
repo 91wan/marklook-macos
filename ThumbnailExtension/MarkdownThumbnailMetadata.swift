@@ -3,6 +3,12 @@ import Foundation
 struct MarkdownThumbnailMetadata: Equatable, Sendable {
     static let defaultMaxPrefixBytes = 64 * 1024
 
+    private struct FenceDelimiter {
+        let marker: Character
+        let count: Int
+        let info: String
+    }
+
     let fileName: String
     let fileExtension: String
     let heading: String?
@@ -87,27 +93,24 @@ struct MarkdownThumbnailMetadata: Equatable, Sendable {
     }
 
     private static func firstHeading(in source: String) -> String? {
-        var isInsideFence = false
-        var fenceMarker: Character?
+        var openingFence: FenceDelimiter?
 
         for rawLine in source.split(separator: "\n", omittingEmptySubsequences: false) {
             let line = String(rawLine)
             let trimmedLine = line.trimmingCharacters(in: .whitespaces)
 
-            if let marker = fenceDelimiter(in: trimmedLine) {
-                if isInsideFence {
-                    if marker == fenceMarker {
-                        isInsideFence = false
-                        fenceMarker = nil
+            if let delimiter = fenceDelimiter(in: trimmedLine) {
+                if let activeFence = openingFence {
+                    if isClosingFence(delimiter, for: activeFence) {
+                        openingFence = nil
                     }
                 } else {
-                    isInsideFence = true
-                    fenceMarker = marker
+                    openingFence = delimiter
                 }
                 continue
             }
 
-            guard !isInsideFence, let heading = headingText(in: trimmedLine) else {
+            guard openingFence == nil, let heading = headingText(in: trimmedLine) else {
                 continue
             }
 
@@ -117,14 +120,28 @@ struct MarkdownThumbnailMetadata: Equatable, Sendable {
         return nil
     }
 
-    private static func fenceDelimiter(in line: String) -> Character? {
-        if line.hasPrefix("```") {
-            return "`"
+    private static func fenceDelimiter(in line: String) -> FenceDelimiter? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard let marker = trimmed.first, marker == "`" || marker == "~" else {
+            return nil
         }
-        if line.hasPrefix("~~~") {
-            return "~"
+
+        let count = trimmed.prefix { $0 == marker }.count
+        guard count >= 3 else {
+            return nil
         }
-        return nil
+
+        let info = String(trimmed.dropFirst(count)).trimmingCharacters(in: .whitespaces)
+        return FenceDelimiter(marker: marker, count: count, info: info)
+    }
+
+    private static func isClosingFence(
+        _ candidate: FenceDelimiter,
+        for opening: FenceDelimiter
+    ) -> Bool {
+        candidate.marker == opening.marker
+            && candidate.count >= opening.count
+            && candidate.info.isEmpty
     }
 
     private static func headingText(in line: String) -> String? {

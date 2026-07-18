@@ -44,6 +44,34 @@ final class MarkdownThumbnailMetadataTests: XCTestCase {
         XCTAssertEqual(metadata.heading, "Real Heading")
     }
 
+    func testTildeFenceRequiresClosingDelimiterAtLeastAsLongAsOpening() {
+        let metadata = parse("""
+        ~~~~markdown
+        # Not a heading
+        ~~~
+        ## Still inside the fence
+        ~~~~
+
+        ## Real Heading
+        """)
+
+        XCTAssertEqual(metadata.heading, "Real Heading")
+    }
+
+    func testTildeFenceClosingDelimiterMustNotContainInfo() {
+        let metadata = parse("""
+        ~~~markdown
+        # Not a heading
+        ~~~not-a-close
+        ## Still inside the fence
+        ~~~
+
+        ## Real Heading
+        """)
+
+        XCTAssertEqual(metadata.heading, "Real Heading")
+    }
+
     func testTrimsAndCollapsesHeadingWhitespace() {
         let metadata = parse("#   A    spaced\t heading   ")
 
