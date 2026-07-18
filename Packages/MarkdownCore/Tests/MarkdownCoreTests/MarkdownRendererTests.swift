@@ -28,6 +28,46 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertTrue(result.html.contains("<li>Beta</li>"))
     }
 
+    func testNestedUnorderedListPreservesHierarchy() throws {
+        let result = try renderer.render(MarkdownDocument(source: """
+        - Parent
+          - Child
+            - Grandchild
+        - Sibling
+        """))
+
+        XCTAssertTrue(result.html.contains("""
+        <li>Parent
+        <ul>
+        <li>Child
+        <ul>
+        <li>Grandchild</li>
+        </ul>
+        </li>
+        </ul>
+        </li>
+        """))
+        XCTAssertTrue(result.html.contains("<li>Sibling</li>"))
+    }
+
+    func testNestedOrderedListRendersInsideUnorderedItem() throws {
+        let result = try renderer.render(MarkdownDocument(source: """
+        - Parent
+          1. First
+          2. Second
+        - Sibling
+        """))
+
+        XCTAssertTrue(result.html.contains("""
+        <li>Parent
+        <ol>
+        <li>First</li>
+        <li>Second</li>
+        </ol>
+        </li>
+        """))
+    }
+
     func testBlockquoteRenders() throws {
         let result = try renderer.render(MarkdownDocument(source: "> A careful quote"))
 
