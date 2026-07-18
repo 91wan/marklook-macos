@@ -48,4 +48,28 @@ final class CommandRunnerTests: XCTestCase {
         XCTAssertFalse(result.succeeded)
         XCTAssertTrue(result.summary.contains("Launch failed"))
     }
+
+    func testTimeoutForceKillsProcessThatIgnoresTermination() async {
+        let command = DiagnosticsCommand(
+            executablePath: "/bin/sh",
+            arguments: [
+                "-c",
+                "trap '' TERM; exec /bin/sleep 5",
+            ],
+            redactedArguments: ["-c", "<timeout fixture>"],
+            displayName: "timeout-fixture"
+        )
+        let start = Date()
+
+        let result = await CommandRunner.run(
+            command,
+            timeout: 0.5,
+            terminationGracePeriod: 0.1
+        )
+
+        XCTAssertTrue(result.didTimeout)
+        XCTAssertFalse(result.succeeded)
+        XCTAssertEqual(result.terminationStatus, SIGKILL)
+        XCTAssertLessThan(Date().timeIntervalSince(start), 2)
+    }
 }
