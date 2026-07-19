@@ -94,6 +94,30 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertFalse(result.html.contains("let x = \"<script>\""))
     }
 
+    func testTildeFencedCodeBlockRendersAndEscapesHTMLInsideCode() throws {
+        let result = try renderer.render(MarkdownDocument(source: """
+        ~~~swift
+        let x = "<script>"
+        ~~~
+        """))
+
+        XCTAssertTrue(result.html.contains("<pre><code class=\"language-swift\">"))
+        XCTAssertTrue(result.html.contains("&lt;script&gt;"))
+        XCTAssertFalse(result.html.contains("let x = \"<script>\""))
+    }
+
+    func testTildeFenceDoesNotCloseOnBacktickFence() throws {
+        let result = try renderer.render(MarkdownDocument(source: """
+        ~~~markdown
+        ```
+        # Still code
+        ~~~
+        """))
+
+        XCTAssertTrue(result.html.contains("```\n# Still code"))
+        XCTAssertFalse(result.html.contains("<h1"))
+    }
+
     func testInlineCodeRenders() throws {
         let result = try renderer.render(MarkdownDocument(source: "Use `swift test` now."))
 
