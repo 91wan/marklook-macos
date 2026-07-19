@@ -55,6 +55,7 @@ jobs:
           test -f Scripts/validate-renderer-security.sh
           test -f Scripts/validate-signed-quicklook.sh
           test -f Scripts/validate-public-repo-privacy.sh
+          test -f Scripts/validate-log-privacy.sh
           test -f Scripts/validate-package-artifact.sh
           test -f Scripts/validate-release-candidate.sh
           test -f Scripts/validate-v0.1.0-release-candidate.sh
@@ -63,6 +64,7 @@ jobs:
           test -f Scripts/build-local-apple-development.sh
           test -f Scripts/doctor-signing.sh
           test -f Tests/Scripts/version-consistency-test.sh
+          test -f Tests/Scripts/log-privacy-test.sh
       - name: Validate plists and entitlements
         run: |
           plutil -lint MarkLookApp/Info.plist
@@ -101,6 +103,7 @@ jobs:
           sh -n Scripts/validate-renderer-security.sh
           sh -n Scripts/validate-signed-quicklook.sh
           sh -n Scripts/validate-public-repo-privacy.sh
+          sh -n Scripts/validate-log-privacy.sh
           sh -n Scripts/diagnose-quicklook-selection.sh
           sh -n Scripts/diagnose-thumbnail-selection.sh
           sh -n Scripts/build-local-apple-development.sh
@@ -113,6 +116,7 @@ jobs:
           sh -n Tests/Scripts/public-repo-privacy-test.sh
           sh -n Tests/Scripts/version-consistency-test.sh
           ruby -c Scripts/validate-version-consistency.rb
+          sh -n Tests/Scripts/log-privacy-test.sh
       - name: Validate packaging scripts
         run: Tests/Scripts/package-debug-test.sh
       - name: Validate release gate script
@@ -130,6 +134,8 @@ jobs:
           Tests/Scripts/public-repo-privacy-test.sh
           Scripts/validate-public-repo-privacy.sh
           Scripts/validate-public-repo-privacy.sh --archive
+      - name: Validate OSLog filename privacy
+        run: Tests/Scripts/log-privacy-test.sh
       - name: Validate thumbnail boundaries
         run: Scripts/validate-thumbnail-boundaries.sh
       - name: Validate diagnostics boundaries
