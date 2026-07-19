@@ -24,20 +24,19 @@
 	<dict>
 		<key>NSExtensionAttributes</key>
 		<dict>
-			<key>QLThumbnailMinimumSize</key>
-			<integer>32</integer>
 			<key>QLSupportedContentTypes</key>
 			<array>
 				<string>net.daringfireball.markdown</string>
-				<string>public.markdown</string>
 				<string>net.ia.markdown</string>
 				<string>io.typora.markdown</string>
-				<string>com.unknown.md</string>
-				<string>net.daringfireball</string>
 				<string>com.apple.dt.document.markdown</string>
 				<string>com.rstudio.rmarkdown</string>
 				<string>org.quarto.qmarkdown</string>
+				<string>com.91wan.marklook.markdown-alias</string>
+				<string>com.91wan.marklook.mdx</string>
 			</array>
+			<key>QLThumbnailMinimumSize</key>
+			<integer>32</integer>
 		</dict>
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.quicklook.thumbnail</string>

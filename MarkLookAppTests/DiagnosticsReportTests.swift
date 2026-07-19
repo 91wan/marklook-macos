@@ -22,16 +22,17 @@ final class DiagnosticsReportTests: XCTestCase {
         )
         let file = FileDiagnostic(
             fileName: "basic.md",
-            contentType: "public.markdown",
-            contentTypeTree: ["public.markdown", "public.text"],
-            isSupported: true,
+            contentType: "net.daringfireball.markdown",
+            contentTypeTree: ["net.daringfireball.markdown", "public.plain-text"],
+            hasKnownFileExtension: true,
+            quickLookUTIMatch: .matched,
             redactedMDLSCommand: "mdls -name kMDItemContentType -name kMDItemContentTypeTree basic.md",
             fullMDLSCommand: "mdls -name kMDItemContentType -name kMDItemContentTypeTree /tmp/marklook-private/Secret/basic.md"
         )
         let report = DiagnosticReport(
             version: Version(marketingVersion: "9.8.7", buildNumber: "654"),
             generatedAt: Date(timeIntervalSince1970: 1_783_000_000),
-            supportedContentTypes: ["public.markdown"],
+            supportedContentTypes: ["net.daringfireball.markdown"],
             supportedFileExtensions: ["md"],
             previewRegistration: preview,
             thumbnailRegistration: thumbnail,
@@ -53,15 +54,34 @@ final class DiagnosticsReportTests: XCTestCase {
         XCTAssertTrue(text.contains("Version: 9.8.7 (654)"))
         XCTAssertTrue(text.contains("Generated:"))
         XCTAssertTrue(text.contains("Supported content types:"))
-        XCTAssertTrue(text.contains("- public.markdown"))
+        XCTAssertTrue(text.contains("- net.daringfireball.markdown"))
         XCTAssertTrue(text.contains("Supported file extensions:"))
         XCTAssertTrue(text.contains("- md"))
         XCTAssertTrue(text.contains("Preview: registered"))
         XCTAssertTrue(text.contains("Thumbnail: incomplete listing"))
         XCTAssertTrue(text.contains("Selected file: basic.md"))
-        XCTAssertTrue(text.contains("kMDItemContentType: public.markdown"))
+        XCTAssertTrue(text.contains("kMDItemContentType: net.daringfireball.markdown"))
+        XCTAssertTrue(text.contains("Known file extension: yes"))
+        XCTAssertTrue(text.contains("Quick Look UTI match: yes"))
         XCTAssertTrue(text.contains("Release caveat: Public distribution still requires Developer ID Application signing, notarization, and stapling."))
         XCTAssertFalse(text.contains("/tmp/marklook-private/Secret/basic.md"))
+    }
+
+    func testReportDistinguishesUnavailableQuickLookMatch() {
+        let file = FileDiagnostic(
+            fileName: "notes.md",
+            contentType: "unavailable",
+            contentTypeTree: [],
+            hasKnownFileExtension: true,
+            quickLookUTIMatch: .unavailable,
+            redactedMDLSCommand: "mdls notes.md",
+            fullMDLSCommand: "mdls /tmp/marklook-private/Secret/notes.md"
+        )
+
+        let report = DiagnosticReport(selectedFile: file)
+
+        XCTAssertTrue(report.text.contains("Quick Look UTI match: unavailable"))
+        XCTAssertFalse(report.text.contains("Quick Look UTI match: no"))
     }
 
     func testVersionReadsBundleMetadata() throws {

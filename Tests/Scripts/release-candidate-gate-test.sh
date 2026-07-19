@@ -118,6 +118,8 @@ MARKLOOK_RC_XCODEGEN="$stub_bin/pass" \
 MARKLOOK_RC_XCODEBUILD="$stub_bin/xcodebuild" \
 MARKLOOK_RC_XCRUN="$stub_bin/xcrun" \
 MARKLOOK_RC_SWIFT="$stub_bin/swift" \
+MARKLOOK_RC_LSREGISTER="$stub_bin/pass" \
+MARKLOOK_RC_PLUGINKIT="$stub_bin/pass" \
 MARKLOOK_RC_PACKAGE_DEBUG="$stub_bin/package-debug" \
 MARKLOOK_RC_VALIDATE_PACKAGE_ARTIFACT="$stub_bin/validate-package-artifact" \
 MARKLOOK_RC_VALIDATE_BUILT_BUNDLE="$stub_bin/pass" \
@@ -142,6 +144,8 @@ grep -q '^Mode: ci$' "$fixture_root/ci.out"
 grep -q '^Package path:' "$fixture_root/ci.out"
 grep -q '^Checksum:' "$fixture_root/ci.out"
 grep -q 'MarkLook-0.1.1-debug-' "$fixture_root/ci.out"
+grep -Fq "pass -u $fixture_root/DerivedData/Build/Products/Debug/MarkLook.app" "$stub_log"
+grep -Fq "pass -u $dist_dir/MarkLook-0.1.1-debug-$(git -C "$repo_root" rev-parse --short HEAD)/MarkLook.app" "$stub_log"
 
 if grep -Eq 'build-local|validate-signed|diagnose-thumbnail|apple-development|/Applications/MarkLook.app' "$stub_log"; then
   echo "error: --ci invoked signing-required or local runtime commands" >&2

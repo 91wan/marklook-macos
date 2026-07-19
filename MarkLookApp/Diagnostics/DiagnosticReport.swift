@@ -53,7 +53,8 @@ struct DiagnosticReport: Sendable {
             lines.append("- Selected file: \(selectedFile.fileName)")
             lines.append("- kMDItemContentType: \(selectedFile.contentType)")
             lines.append("- Content type tree: \(selectedFile.contentTypeTree.joined(separator: ", "))")
-            lines.append("- Supported: \(selectedFile.isSupported ? "yes" : "no")")
+            lines.append("- Known file extension: \(selectedFile.hasKnownFileExtension ? "yes" : "no")")
+            lines.append("- Quick Look UTI match: \(selectedFile.quickLookUTIMatch.label)")
             lines.append("- mdls command: \(selectedFile.redactedMDLSCommand)")
         } else {
             lines.append("- none")

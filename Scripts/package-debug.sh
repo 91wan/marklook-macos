@@ -49,6 +49,8 @@ xcodebuild_cmd="${MARKLOOK_PACKAGE_XCODEBUILD:-xcodebuild}"
 ditto_cmd="${MARKLOOK_PACKAGE_DITTO:-ditto}"
 shasum_cmd="${MARKLOOK_PACKAGE_SHASUM:-shasum}"
 codesign_cmd="${MARKLOOK_PACKAGE_CODESIGN:-codesign}"
+lsregister_cmd="${MARKLOOK_PACKAGE_LSREGISTER:-/System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister}"
+pluginkit_cmd="${MARKLOOK_PACKAGE_PLUGINKIT:-pluginkit}"
 validate_built_bundle="${MARKLOOK_PACKAGE_VALIDATE_BUILT_BUNDLE:-$repo_root/Scripts/validate-built-bundle.sh}"
 validate_preview_contract="${MARKLOOK_PACKAGE_VALIDATE_PREVIEW_CONTRACT:-$repo_root/Scripts/validate-quicklook-preview-contract.sh}"
 validate_thumbnail_boundaries="${MARKLOOK_PACKAGE_VALIDATE_THUMBNAIL_BOUNDARIES:-$repo_root/Scripts/validate-thumbnail-boundaries.sh}"
@@ -67,6 +69,23 @@ zip_name="$artifact_stem.zip"
 zip_path="$output_dir/$zip_name"
 sha_path="$zip_path.sha256"
 manifest_path="$output_dir/MANIFEST.txt"
+built_app=""
+
+unregister_disposable_app() {
+  local app="$1"
+
+  [ -n "$app" ] || return
+  "$pluginkit_cmd" -r "$app/Contents/PlugIns/MarkLookPreview.appex" >/dev/null 2>&1 || true
+  "$pluginkit_cmd" -r "$app/Contents/PlugIns/MarkLookThumbnail.appex" >/dev/null 2>&1 || true
+  "$lsregister_cmd" -u "$app" >/dev/null 2>&1 || true
+}
+
+cleanup_disposable_registrations() {
+  unregister_disposable_app "$built_app"
+  unregister_disposable_app "$package_app"
+}
+
+trap cleanup_disposable_registrations EXIT
 
 rm -rf "$output_dir"
 mkdir -p "$output_dir"
@@ -74,6 +93,7 @@ mkdir -p "$output_dir"
 case "$build_mode" in
   unsigned-ci)
     derived_data=".build/PackageUnsignedDerivedData"
+    built_app="$repo_root/$derived_data/Build/Products/Debug/MarkLook.app"
     rm -rf "$derived_data"
     "$xcodegen_cmd" generate
     "$xcodebuild_cmd" \
@@ -83,15 +103,14 @@ case "$build_mode" in
       -derivedDataPath "$derived_data" \
       CODE_SIGNING_ALLOWED=NO \
       build
-    built_app="$repo_root/$derived_data/Build/Products/Debug/MarkLook.app"
     signing_identity_summary="unsigned CI build; not a launchable trust artifact"
     team_identifier="not available"
     codesign_verification_result="not run for unsigned-ci mode"
     codesign_details="not recorded for unsigned-ci mode"
     ;;
   apple-development)
-    "$build_apple_development"
     built_app="$repo_root/.build/LocalDerivedData/Build/Products/Debug/MarkLook.app"
+    "$build_apple_development"
     signing_identity_summary="Apple Development local validation package"
     ;;
 esac

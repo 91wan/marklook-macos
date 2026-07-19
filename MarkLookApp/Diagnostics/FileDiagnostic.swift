@@ -1,29 +1,58 @@
 import Foundation
 
+enum QuickLookUTIMatchStatus: Equatable, Sendable {
+    case matched
+    case notMatched
+    case unavailable
+
+    var label: String {
+        switch self {
+        case .matched:
+            "yes"
+        case .notMatched:
+            "no"
+        case .unavailable:
+            "unavailable"
+        }
+    }
+}
+
 struct FileDiagnostic: Equatable, Sendable {
     var fileName: String
     var contentType: String
     var contentTypeTree: [String]
-    var isSupported: Bool
+    var hasKnownFileExtension: Bool
+    var quickLookUTIMatch: QuickLookUTIMatchStatus
     var redactedMDLSCommand: String
     var fullMDLSCommand: String
 
-    static func parse(mdlsOutput: String, fileURL: URL) -> FileDiagnostic {
+    static func parse(
+        mdlsOutput: String,
+        fileURL: URL,
+        mdlsSucceeded: Bool
+    ) -> FileDiagnostic {
         let command = DiagnosticsCommand.mdls(fileURL: fileURL)
-        let contentType = parseScalarValue(named: "kMDItemContentType", in: mdlsOutput) ?? "unavailable"
+        let parsedContentType = parseScalarValue(named: "kMDItemContentType", in: mdlsOutput)
+        let contentType = parsedContentType ?? "unavailable"
         let contentTypeTree = parseArrayValue(named: "kMDItemContentTypeTree", in: mdlsOutput)
         let pathExtension = fileURL.pathExtension.lowercased()
         let supportedTypes = Set(SupportedTypes.contentTypes)
         let supportedExtensions = Set(SupportedTypes.fileExtensions)
-        let isSupported = supportedTypes.contains(contentType)
-            || !supportedTypes.isDisjoint(with: contentTypeTree)
-            || supportedExtensions.contains(pathExtension)
+        let quickLookUTIMatch: QuickLookUTIMatchStatus
+        if !mdlsSucceeded || parsedContentType == nil {
+            quickLookUTIMatch = .unavailable
+        } else if supportedTypes.contains(contentType) {
+            quickLookUTIMatch = .matched
+        } else {
+            quickLookUTIMatch = .notMatched
+        }
 
         return FileDiagnostic(
             fileName: fileURL.lastPathComponent,
             contentType: contentType,
             contentTypeTree: contentTypeTree,
-            isSupported: isSupported,
+            hasKnownFileExtension: supportedExtensions.contains(pathExtension),
+            quickLookUTIMatch: quickLookUTIMatch,
             redactedMDLSCommand: command.displayString(redactFilePaths: true),
             fullMDLSCommand: command.displayString(redactFilePaths: false)
         )

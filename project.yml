@@ -42,14 +42,56 @@ targets:
             LSHandlerRank: Alternate
             LSItemContentTypes:
               - net.daringfireball.markdown
-              - public.markdown
               - net.ia.markdown
               - io.typora.markdown
-              - com.unknown.md
-              - net.daringfireball
               - com.apple.dt.document.markdown
               - com.rstudio.rmarkdown
               - org.quarto.qmarkdown
+              - com.91wan.marklook.markdown-alias
+              - com.91wan.marklook.mdx
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.91wan.marklook.markdown-alias
+            UTTypeConformsTo:
+              - net.daringfireball.markdown
+            UTTypeDescription: Markdown Alias Document
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - mdown
+                - mkd
+                - mkdn
+          - UTTypeIdentifier: com.91wan.marklook.mdx
+            UTTypeConformsTo:
+              - public.text
+            UTTypeDescription: MDX Document
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - mdx
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: net.daringfireball.markdown
+            UTTypeConformsTo:
+              - public.plain-text
+            UTTypeDescription: Markdown Document
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - md
+                - markdown
+              public.mime-type:
+                - text/markdown
+                - text/x-markdown
+          - UTTypeIdentifier: com.rstudio.rmarkdown
+            UTTypeConformsTo:
+              - net.daringfireball.markdown
+            UTTypeDescription: R Markdown Document
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - rmd
+          - UTTypeIdentifier: org.quarto.qmarkdown
+            UTTypeConformsTo:
+              - net.daringfireball.markdown
+            UTTypeDescription: Quarto Markdown Document
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - qmd
         LSApplicationCategoryType: public.app-category.developer-tools
         LSMinimumSystemVersion: "$(MACOSX_DEPLOYMENT_TARGET)"
         NSHumanReadableCopyright: "Copyright © 2026 MarkLook contributors. MIT License."
@@ -98,14 +140,13 @@ targets:
             QLIsDataBasedPreview: true
             QLSupportedContentTypes:
               - net.daringfireball.markdown
-              - public.markdown
               - net.ia.markdown
               - io.typora.markdown
-              - com.unknown.md
-              - net.daringfireball
               - com.apple.dt.document.markdown
               - com.rstudio.rmarkdown
               - org.quarto.qmarkdown
+              - com.91wan.marklook.markdown-alias
+              - com.91wan.marklook.mdx
             QLSupportsSearchableItems: false
           NSExtensionPointIdentifier: com.apple.quicklook.preview
           NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).PreviewViewController"
@@ -150,14 +191,13 @@ targets:
             QLThumbnailMinimumSize: 32
             QLSupportedContentTypes:
               - net.daringfireball.markdown
-              - public.markdown
               - net.ia.markdown
               - io.typora.markdown
-              - com.unknown.md
-              - net.daringfireball
               - com.apple.dt.document.markdown
               - com.rstudio.rmarkdown
               - org.quarto.qmarkdown
+              - com.91wan.marklook.markdown-alias
+              - com.91wan.marklook.mdx
           NSExtensionPointIdentifier: com.apple.quicklook.thumbnail
           NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).ThumbnailProvider"
     entitlements:
