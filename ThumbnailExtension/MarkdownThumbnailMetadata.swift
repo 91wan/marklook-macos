@@ -51,10 +51,14 @@ struct MarkdownThumbnailMetadata: Equatable, Sendable {
             )
         }
 
+        let normalizedSource = source.first == "\u{FEFF}"
+            ? String(source.dropFirst())
+            : source
+
         return MarkdownThumbnailMetadata(
             fileName: fileName,
             fileExtension: fileExtension,
-            heading: firstHeading(in: source),
+            heading: firstHeading(in: normalizedSource),
             approximateLineCount: lineCount,
             isTruncated: isTruncated,
             isUTF8: true
