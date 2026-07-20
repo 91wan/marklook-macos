@@ -112,7 +112,11 @@ final class DiagnosticsViewModel: ObservableObject {
         let command = DiagnosticsCommand.mdls(fileURL: fileURL)
         let result = await commandExecutor(command)
         selectedFileCommandResult = result
-        selectedFile = FileDiagnostic.parse(mdlsOutput: result.standardOutput, fileURL: fileURL)
+        selectedFile = FileDiagnostic.parse(
+            mdlsOutput: result.standardOutput,
+            fileURL: fileURL,
+            mdlsSucceeded: result.succeeded
+        )
     }
 
     func resetQuickLookCache() async {

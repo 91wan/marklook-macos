@@ -48,8 +48,10 @@ jobs:
           test -f MarkLookApp/MarkLook.entitlements
           test -f Scripts/validate-diagnostics-boundaries.sh
           test -f Scripts/validate-supported-types.sh
+          test -f Tests/Scripts/supported-types-test.sh
           test -f Scripts/validate-version-consistency.rb
           test -f Scripts/validate-built-bundle.sh
+          test -f Scripts/validate-built-uti-declarations.rb
           test -f Scripts/validate-quicklook-preview-contract.sh
           test -f Scripts/validate-thumbnail-boundaries.sh
           test -f Scripts/validate-renderer-security.sh
@@ -65,6 +67,7 @@ jobs:
           test -f Scripts/doctor-signing.sh
           test -f Tests/Scripts/version-consistency-test.sh
           test -f Tests/Scripts/log-privacy-test.sh
+          test -f Tests/Scripts/built-uti-declarations-test.sh
       - name: Validate plists and entitlements
         run: |
           plutil -lint MarkLookApp/Info.plist
@@ -114,7 +117,10 @@ jobs:
           sh -n Tests/Scripts/quicklook-preview-contract-test.sh
           sh -n Tests/Scripts/validate-signed-quicklook-mode-test.sh
           sh -n Tests/Scripts/public-repo-privacy-test.sh
+          sh -n Tests/Scripts/supported-types-test.sh
+          sh -n Tests/Scripts/built-uti-declarations-test.sh
           sh -n Tests/Scripts/version-consistency-test.sh
+          ruby -c Scripts/validate-built-uti-declarations.rb
           ruby -c Scripts/validate-version-consistency.rb
           sh -n Tests/Scripts/log-privacy-test.sh
       - name: Validate packaging scripts
@@ -140,6 +146,10 @@ jobs:
         run: Scripts/validate-thumbnail-boundaries.sh
       - name: Validate diagnostics boundaries
         run: Scripts/validate-diagnostics-boundaries.sh
+      - name: Validate supported type routing gate
+        run: Tests/Scripts/supported-types-test.sh
+      - name: Validate built UTI declaration gate
+        run: Tests/Scripts/built-uti-declarations-test.sh
       - name: Check whitespace
         run: git diff --check
       - name: Install XcodeGen

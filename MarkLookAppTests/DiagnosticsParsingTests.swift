@@ -15,7 +15,8 @@ final class DiagnosticsParsingTests: XCTestCase {
 
         let diagnostic = FileDiagnostic.parse(
             mdlsOutput: output,
-            fileURL: URL(fileURLWithPath: "/tmp/marklook-private/Documents/basic.md")
+            fileURL: URL(fileURLWithPath: "/tmp/marklook-private/Documents/basic.md"),
+            mdlsSucceeded: true
         )
 
         XCTAssertEqual(diagnostic.fileName, "basic.md")
@@ -27,26 +28,29 @@ final class DiagnosticsParsingTests: XCTestCase {
             "public.item",
             "public.content"
         ])
-        XCTAssertTrue(diagnostic.isSupported)
+        XCTAssertTrue(diagnostic.hasKnownFileExtension)
+        XCTAssertEqual(diagnostic.quickLookUTIMatch, .matched)
     }
 
-    func testSupportedMarkdownTypeFromTree() {
+    func testUnknownSubtypeDoesNotCreateExactQuickLookMatchFromTypeTree() {
         let output = """
-        kMDItemContentType = "dyn.ah62d4rv4ge81g5p"
+        kMDItemContentType = "com.example.markdown-subtype"
         kMDItemContentTypeTree = (
-            "dyn.ah62d4rv4ge81g5p",
-            "public.markdown",
+            "com.example.markdown-subtype",
+            "net.daringfireball.markdown",
             "public.text"
         )
         """
 
         let diagnostic = FileDiagnostic.parse(
             mdlsOutput: output,
-            fileURL: URL(fileURLWithPath: "/tmp/marklook-private/Documents/notes.md")
+            fileURL: URL(fileURLWithPath: "/tmp/marklook-private/Documents/notes.md"),
+            mdlsSucceeded: true
         )
 
-        XCTAssertEqual(diagnostic.contentType, "dyn.ah62d4rv4ge81g5p")
-        XCTAssertTrue(diagnostic.isSupported)
+        XCTAssertEqual(diagnostic.contentType, "com.example.markdown-subtype")
+        XCTAssertTrue(diagnostic.hasKnownFileExtension)
+        XCTAssertEqual(diagnostic.quickLookUTIMatch, .notMatched)
     }
 
     func testUnknownContentTypeIsUnsupported() {
@@ -60,10 +64,79 @@ final class DiagnosticsParsingTests: XCTestCase {
 
         let diagnostic = FileDiagnostic.parse(
             mdlsOutput: output,
-            fileURL: URL(fileURLWithPath: "/tmp/marklook-private/Documents/blob.bin")
+            fileURL: URL(fileURLWithPath: "/tmp/marklook-private/Documents/blob.bin"),
+            mdlsSucceeded: true
         )
 
-        XCTAssertFalse(diagnostic.isSupported)
+        XCTAssertFalse(diagnostic.hasKnownFileExtension)
+        XCTAssertEqual(diagnostic.quickLookUTIMatch, .notMatched)
+    }
+
+    func testKnownExtensionDoesNotCreateQuickLookUTIMatch() {
+        let output = """
+        kMDItemContentType = "dyn.ah62d4rv4ge8043d2"
+        kMDItemContentTypeTree = (
+            "dyn.ah62d4rv4ge8043d2",
+            "public.text",
+            "public.data"
+        )
+        """
+
+        let diagnostic = FileDiagnostic.parse(
+            mdlsOutput: output,
+            fileURL: URL(fileURLWithPath: "/tmp/marklook-private/Documents/component.mdx"),
+            mdlsSucceeded: true
+        )
+
+        XCTAssertTrue(diagnostic.hasKnownFileExtension)
+        XCTAssertEqual(diagnostic.quickLookUTIMatch, .notMatched)
+    }
+
+    func testDeclaredMDXTypeMatchesQuickLook() {
+        let output = """
+        kMDItemContentType = "com.91wan.marklook.mdx"
+        kMDItemContentTypeTree = (
+            "com.91wan.marklook.mdx",
+            "public.text",
+            "public.data"
+        )
+        """
+
+        let diagnostic = FileDiagnostic.parse(
+            mdlsOutput: output,
+            fileURL: URL(fileURLWithPath: "/tmp/marklook-private/Documents/component.mdx"),
+            mdlsSucceeded: true
+        )
+
+        XCTAssertTrue(diagnostic.hasKnownFileExtension)
+        XCTAssertEqual(diagnostic.quickLookUTIMatch, .matched)
+    }
+
+    func testMissingMDLSOutputMakesQuickLookMatchUnavailable() {
+        let diagnostic = FileDiagnostic.parse(
+            mdlsOutput: "",
+            fileURL: URL(fileURLWithPath: "/tmp/marklook-private/Documents/notes.md"),
+            mdlsSucceeded: true
+        )
+
+        XCTAssertEqual(diagnostic.contentType, "unavailable")
+        XCTAssertTrue(diagnostic.hasKnownFileExtension)
+        XCTAssertEqual(diagnostic.quickLookUTIMatch, .unavailable)
+    }
+
+    func testFailedMDLSCommandMakesQuickLookMatchUnavailable() {
+        let output = """
+        kMDItemContentType = "net.daringfireball.markdown"
+        """
+
+        let diagnostic = FileDiagnostic.parse(
+            mdlsOutput: output,
+            fileURL: URL(fileURLWithPath: "/tmp/marklook-private/Documents/notes.md"),
+            mdlsSucceeded: false
+        )
+
+        XCTAssertEqual(diagnostic.contentType, "net.daringfireball.markdown")
+        XCTAssertEqual(diagnostic.quickLookUTIMatch, .unavailable)
     }
 
     func testPreviewFamilyAndExactRegistrationPresent() {

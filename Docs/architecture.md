@@ -67,14 +67,13 @@ The extensions must target Markdown-specific content types and must not claim `p
 Initial supported content types:
 
 - `net.daringfireball.markdown`
-- `public.markdown`
 - `net.ia.markdown`
 - `io.typora.markdown`
-- `com.unknown.md`
-- `net.daringfireball`
 - `com.apple.dt.document.markdown`
 - `com.rstudio.rmarkdown`
 - `org.quarto.qmarkdown`
+- `com.91wan.marklook.markdown-alias`
+- `com.91wan.marklook.mdx`
 
 Initial extensions:
 
@@ -86,3 +85,5 @@ Initial extensions:
 - `.mdx`
 - `.rmd`
 - `.qmd`
+
+The host app imports `net.daringfireball.markdown` for `.md` and `.markdown`, exports narrow fallback UTIs for `.mdown`, `.mkd`, `.mkdn`, and MDX, and imports the vendor UTIs for R Markdown and Quarto. The imported Markdown parent conforms to `public.plain-text`, so child declarations inherit a system-declared text conformance without advertising the broad parent to Quick Look. Diagnostics reports extension recognition separately from the selected file's exact Quick Look UTI match; a known suffix or matching ancestor alone is not evidence that Finder can route the file to MarkLook.

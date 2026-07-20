@@ -16,14 +16,13 @@
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>net.daringfireball.markdown</string>
-				<string>public.markdown</string>
 				<string>net.ia.markdown</string>
 				<string>io.typora.markdown</string>
-				<string>com.unknown.md</string>
-				<string>net.daringfireball</string>
 				<string>com.apple.dt.document.markdown</string>
 				<string>com.rstudio.rmarkdown</string>
 				<string>org.quarto.qmarkdown</string>
+				<string>com.91wan.marklook.markdown-alias</string>
+				<string>com.91wan.marklook.mdx</string>
 			</array>
 		</dict>
 	</array>
@@ -49,5 +48,104 @@
 	<string>Copyright © 2026 MarkLook contributors. MIT License.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>net.daringfireball.markdown</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Markdown Alias Document</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.91wan.marklook.markdown-alias</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>mdown</string>
+					<string>mkd</string>
+					<string>mkdn</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.text</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>MDX Document</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.91wan.marklook.mdx</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>mdx</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+	<key>UTImportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.plain-text</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Markdown Document</string>
+			<key>UTTypeIdentifier</key>
+			<string>net.daringfireball.markdown</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>md</string>
+					<string>markdown</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>text/markdown</string>
+					<string>text/x-markdown</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>net.daringfireball.markdown</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>R Markdown Document</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.rstudio.rmarkdown</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>rmd</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>net.daringfireball.markdown</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Quarto Markdown Document</string>
+			<key>UTTypeIdentifier</key>
+			<string>org.quarto.qmarkdown</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>qmd</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
 </dict>
 </plist>

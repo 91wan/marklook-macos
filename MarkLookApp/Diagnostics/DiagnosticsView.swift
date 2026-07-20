@@ -117,7 +117,8 @@ struct DiagnosticsView: View {
                 if let selectedFile = viewModel.selectedFile {
                     InfoRow(label: "File", value: selectedFile.fileName)
                     InfoRow(label: "kMDItemContentType", value: selectedFile.contentType)
-                    InfoRow(label: "Supported", value: selectedFile.isSupported ? "yes" : "no")
+                    InfoRow(label: "Known file extension", value: selectedFile.hasKnownFileExtension ? "yes" : "no")
+                    InfoRow(label: "Quick Look UTI match", value: selectedFile.quickLookUTIMatch.label)
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Content type tree")
                             .font(.headline)

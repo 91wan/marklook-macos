@@ -51,6 +51,8 @@ xcrun_cmd="${MARKLOOK_RC_XCRUN:-xcrun}"
 swift_cmd="${MARKLOOK_RC_SWIFT:-swift}"
 ditto_cmd="${MARKLOOK_RC_DITTO:-ditto}"
 open_cmd="${MARKLOOK_RC_OPEN:-open}"
+lsregister_cmd="${MARKLOOK_RC_LSREGISTER:-/System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister}"
+pluginkit_cmd="${MARKLOOK_RC_PLUGINKIT:-pluginkit}"
 package_debug="${MARKLOOK_RC_PACKAGE_DEBUG:-$repo_root/Scripts/package-debug.sh}"
 validate_package_artifact="${MARKLOOK_RC_VALIDATE_PACKAGE_ARTIFACT:-$repo_root/Scripts/validate-package-artifact.sh}"
 validate_built_bundle="${MARKLOOK_RC_VALIDATE_BUILT_BUNDLE:-$repo_root/Scripts/validate-built-bundle.sh}"
@@ -78,7 +80,29 @@ renderer_fixture="${MARKLOOK_RC_RENDERER_FIXTURE:-/tmp/marklook-renderer-safe-${
 project_dump="${MARKLOOK_RC_PROJECT_DUMP:-/tmp/marklook-project-dump-${version}.yml}"
 artifact_stem="MarkLook-${version}-debug-${short_sha}"
 package_zip="$dist_root/$artifact_stem/$artifact_stem.zip"
+package_app="$dist_root/$artifact_stem/MarkLook.app"
 package_checksum=""
+
+release_candidate_app="$derived_data/Build/Products/Debug/MarkLook.app"
+case "$release_candidate_app" in
+  /*) ;;
+  *) release_candidate_app="$repo_root/$release_candidate_app" ;;
+esac
+
+unregister_disposable_build() {
+  local app="$1"
+
+  "$pluginkit_cmd" -r "$app/Contents/PlugIns/MarkLookPreview.appex" >/dev/null 2>&1 || true
+  "$pluginkit_cmd" -r "$app/Contents/PlugIns/MarkLookThumbnail.appex" >/dev/null 2>&1 || true
+  "$lsregister_cmd" -u "$app" >/dev/null 2>&1 || true
+}
+
+cleanup_release_candidate_registration() {
+  unregister_disposable_build "$release_candidate_app"
+  unregister_disposable_build "$package_app"
+}
+
+trap cleanup_release_candidate_registration EXIT
 
 run() {
   printf '+'
@@ -187,16 +211,9 @@ validate_installed_marklook_process() {
   esac
 }
 
-unregister_local_build_quicklook_plugins() {
-  local plugin_path
-
-  for plugin_path in \
-    "$repo_root/.build/LocalDerivedData/Build/Products/Debug/MarkLook.app/Contents/PlugIns/MarkLookPreview.appex" \
-    "$repo_root/.build/LocalDerivedData/Build/Products/Debug/MarkLook.app/Contents/PlugIns/MarkLookThumbnail.appex"; do
-    if [ -d "$plugin_path" ]; then
-      pluginkit -r "$plugin_path" >/dev/null 2>&1 || true
-    fi
-  done
+unregister_local_build() {
+  unregister_disposable_build \
+    "$repo_root/.build/LocalDerivedData/Build/Products/Debug/MarkLook.app"
 }
 
 run_ci_gate() {
@@ -252,6 +269,7 @@ run_ci_gate() {
 
   run "$validate_built_bundle" "$derived_data/Build/Products/Debug/MarkLook.app"
   run "$validate_preview_contract" "$derived_data/Build/Products/Debug/MarkLook.app"
+  unregister_disposable_build "$release_candidate_app"
 
   (
     cd Packages/MarkdownCore
@@ -276,7 +294,7 @@ run_local_gate() {
   run "$ditto_cmd" .build/LocalDerivedData/Build/Products/Debug/MarkLook.app "$install_app"
   run "$open_cmd" "$install_app"
   validate_installed_marklook_process
-  unregister_local_build_quicklook_plugins
+  unregister_local_build
   run "$validate_signed_quicklook" --development --noninteractive "$install_app"
   run "$diagnose_thumbnail_selection" "$install_app" Samples/basic.md
 }

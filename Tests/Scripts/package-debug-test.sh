@@ -78,6 +78,12 @@ set -euo pipefail
 printf 'validator %s\n' "$*" >>"$MARKLOOK_PACKAGE_TEST_LOG"
 STUB
 
+cat >"$stub_bin/cleanup" <<'STUB'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'cleanup %s\n' "$*" >>"$MARKLOOK_PACKAGE_TEST_LOG"
+STUB
+
 chmod +x "$stub_bin"/*
 
 dist_dir="$fixture_root/dist"
@@ -88,6 +94,8 @@ MARKLOOK_PACKAGE_VALIDATE_BUILT_BUNDLE="$stub_bin/validator" \
 MARKLOOK_PACKAGE_VALIDATE_PREVIEW_CONTRACT="$stub_bin/validator" \
 MARKLOOK_PACKAGE_VALIDATE_THUMBNAIL_BOUNDARIES="$stub_bin/validator" \
 MARKLOOK_PACKAGE_VALIDATE_DIAGNOSTICS_BOUNDARIES="$stub_bin/validator" \
+MARKLOOK_PACKAGE_LSREGISTER="$stub_bin/cleanup" \
+MARKLOOK_PACKAGE_PLUGINKIT="$stub_bin/cleanup" \
 MARKLOOK_PACKAGE_DIST_DIR="$dist_dir" \
   "$packager" --unsigned-ci >"$fixture_root/package.out" 2>&1
 
@@ -102,6 +110,8 @@ grep -q 'Public release caveat:' "$manifest"
 grep -q 'Developer ID Application signing, hardened runtime, notarization, and stapling are still required' "$manifest"
 grep -q '^Build mode: unsigned-ci' "$manifest"
 grep -q '^AppIcon status: committed; Assets.car present' "$manifest"
+grep -Fq "cleanup -u $repo_root/.build/PackageUnsignedDerivedData/Build/Products/Debug/MarkLook.app" "$stub_log"
+grep -Fq "cleanup -u $dist_dir/MarkLook-0.1.1-debug-$(git -C "$repo_root" rev-parse --short HEAD)/MarkLook.app" "$stub_log"
 
 bad_dir="$fixture_root/bad"
 mkdir -p "$bad_dir/empty"
