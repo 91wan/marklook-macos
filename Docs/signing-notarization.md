@@ -41,17 +41,35 @@ Public distribution outside the Mac App Store requires:
 - stapling
 - Gatekeeper assessment on the stapled artifact
 
-Placeholder commands:
+Check the local identity first:
 
 ```bash
-xcrun notarytool submit <ZIP_OR_DMG> --keychain-profile <PROFILE> --wait
-xcrun stapler staple <APP_OR_DMG>
-spctl --assess --type execute --verbose=4 <APP>
+Scripts/doctor-release-identity.sh
+Scripts/package-developer-id.sh --dry-run
+```
+
+Create a Developer ID signed artifact:
+
+```bash
+DEVELOPER_ID_APPLICATION="Developer ID Application: <NAME> (<TEAM_ID>)" \
+  Scripts/package-developer-id.sh --developer-id
+Scripts/validate-developer-id-artifact.sh --signed-only dist/MarkLook-<version>-developer-id-<shortsha>/MarkLook-<version>-developer-id-<shortsha>.zip
+```
+
+Create a notarized artifact only when the local keychain profile is configured:
+
+```bash
+DEVELOPER_ID_APPLICATION="Developer ID Application: <NAME> (<TEAM_ID>)" \
+NOTARYTOOL_PROFILE=<PROFILE> \
+  Scripts/package-developer-id.sh --developer-id --notarize
+Scripts/validate-developer-id-artifact.sh --notarized dist/MarkLook-<version>-developer-id-<shortsha>/MarkLook-<version>-developer-id-<shortsha>.zip
 ```
 
 Do not put Apple account credentials, API keys, passwords, or keychain profile secrets in repository files, PR descriptions, issue comments, logs, or release notes.
 
 Do not claim notarization or stapling until the real artifact has been submitted, accepted, stapled, and assessed.
+
+See `Docs/developer-id-release-lane.md` and `Docs/public-binary-release-checklist.md` for the full public binary release gate.
 
 ## Package validation
 

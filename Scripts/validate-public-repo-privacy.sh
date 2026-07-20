@@ -33,6 +33,8 @@ repo_root="$(git rev-parse --show-toplevel)"
 scan_root="$repo_root"
 tmpdir=""
 list_tmp="$(mktemp -d)"
+security_cmd="${MARKLOOK_PRIVACY_SECURITY:-security}"
+local_team_ids_file="$list_tmp/local-team-identifiers"
 
 cleanup() {
   if [[ -n "$tmpdir" ]]; then
@@ -94,6 +96,31 @@ is_allowed_apple_development_line() {
   return 1
 }
 
+is_allowed_teamidentifier_token() {
+  case "$1" in
+    TEAMID1234|TEAMTEST01|USERID1234|CNID123456|0000000000)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+collect_local_team_identifiers() {
+  local identities_file="$list_tmp/signing-identities"
+  : >"$local_team_ids_file"
+
+  if ! command -v "$security_cmd" >/dev/null 2>&1; then
+    return
+  fi
+  if ! "$security_cmd" find-identity -v -p codesigning >"$identities_file" 2>/dev/null; then
+    return
+  fi
+
+  grep -Eo '\([A-Z0-9]{10}\)' "$identities_file" |
+    tr -d '()' |
+    sort -u >"$local_team_ids_file" || true
+}
+
 scan_match() {
   local rel="$1"
   local file="$2"
@@ -119,6 +146,60 @@ scan_match() {
   done <<< "$matches"
 }
 
+scan_local_team_identifiers() {
+  local rel="$1"
+  local file="$2"
+  local team_id
+  local matches
+  local match
+  local line_no
+
+  while IFS= read -r team_id; do
+    [[ -z "$team_id" ]] && continue
+    matches="$(grep -nF "$team_id" "$file" || true)"
+    while IFS= read -r match; do
+      [[ -z "$match" ]] && continue
+      line_no="${match%%:*}"
+      report_violation "local signing TeamIdentifier" "$rel:$line_no"
+    done <<< "$matches"
+  done <"$local_team_ids_file"
+}
+
+scan_contextual_teamidentifier_tokens() {
+  local rel="$1"
+  local file="$2"
+  local matches
+  local match
+  local line_no
+  local line
+  local tokens
+  local token
+
+  if ! grep -Eiq 'TeamIdentifier|team[_ -]?id|local[_ -]?team' "$file"; then
+    return
+  fi
+
+  matches="$(grep -nE '(^|[^A-Z0-9])[A-Z0-9]{10}([^A-Z0-9]|$)' "$file" || true)"
+  while IFS= read -r match; do
+    [[ -z "$match" ]] && continue
+    line_no="${match%%:*}"
+    line="${match#*:}"
+    tokens="$(printf '%s\n' "$line" |
+      grep -Eo '(^|[^A-Z0-9])[A-Z0-9]{10}([^A-Z0-9]|$)' |
+      grep -Eo '[A-Z0-9]{10}' || true)"
+    while IFS= read -r token; do
+      [[ -z "$token" ]] && continue
+      if [[ ! "$token" =~ [A-Z] ]] || [[ ! "$token" =~ [0-9] ]]; then
+        continue
+      fi
+      if is_allowed_teamidentifier_token "$token"; then
+        continue
+      fi
+      report_violation "contextual TeamIdentifier token" "$rel:$line_no"
+    done <<< "$tokens"
+  done <<< "$matches"
+}
+
 scan_text_file() {
   local rel="$1"
   local file="$2"
@@ -132,6 +213,8 @@ scan_text_file() {
   scan_match "$rel" "$file" 'TeamIdentifier: [A-Z0-9]{10}' "real-looking TeamIdentifier declaration" is_allowed_teamidentifier_line
   scan_match "$rel" "$file" 'TeamIdentifier=[A-Z0-9]{10}' "real-looking TeamIdentifier declaration" is_allowed_teamidentifier_line
   scan_match "$rel" "$file" 'Apple Development: [0-9]{6,}' "real-looking Apple Development subject" is_allowed_apple_development_line
+  scan_local_team_identifiers "$rel" "$file"
+  scan_contextual_teamidentifier_tokens "$rel" "$file"
 }
 
 scan_current_tree_text() {
@@ -160,6 +243,7 @@ scan_archive_text() {
   done <"$list_file"
 }
 
+collect_local_team_identifiers
 scan_evidence_images
 if [[ "$mode" == "archive" ]]; then
   scan_archive_text

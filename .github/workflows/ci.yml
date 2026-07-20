@@ -35,6 +35,8 @@ jobs:
           test -f Docs/known-limitations-v0.1.0.md
           test -f Docs/v0.1.0-release-gate.md
           test -f Docs/signing-notarization.md
+          test -f Docs/developer-id-release-lane.md
+          test -f Docs/public-binary-release-checklist.md
           test -f Docs/github-release-draft-v0.1.0.md
           test -f Docs/homebrew-cask-draft.rb
           test -f Docs/signing-and-plugin-validation.md
@@ -59,12 +61,15 @@ jobs:
           test -f Scripts/validate-public-repo-privacy.sh
           test -f Scripts/validate-log-privacy.sh
           test -f Scripts/validate-package-artifact.sh
+          test -f Scripts/validate-developer-id-artifact.sh
           test -f Scripts/validate-release-candidate.sh
           test -f Scripts/validate-v0.1.0-release-candidate.sh
           test -f Scripts/diagnose-quicklook-selection.sh
           test -f Scripts/diagnose-thumbnail-selection.sh
           test -f Scripts/build-local-apple-development.sh
           test -f Scripts/doctor-signing.sh
+          test -f Scripts/doctor-release-identity.sh
+          test -f Scripts/package-developer-id.sh
           test -f Tests/Scripts/version-consistency-test.sh
           test -f Tests/Scripts/log-privacy-test.sh
           test -f Tests/Scripts/built-uti-declarations-test.sh
@@ -95,7 +100,9 @@ jobs:
           sh -n Scripts/reset-quicklook.sh
           sh -n Scripts/diagnose-file.sh
           sh -n Scripts/package-debug.sh
+          sh -n Scripts/package-developer-id.sh
           sh -n Scripts/validate-package-artifact.sh
+          sh -n Scripts/validate-developer-id-artifact.sh
           sh -n Scripts/validate-release-candidate.sh
           sh -n Scripts/validate-v0.1.0-release-candidate.sh
           sh -n Scripts/validate-diagnostics-boundaries.sh
@@ -111,7 +118,9 @@ jobs:
           sh -n Scripts/diagnose-thumbnail-selection.sh
           sh -n Scripts/build-local-apple-development.sh
           sh -n Scripts/doctor-signing.sh
+          sh -n Scripts/doctor-release-identity.sh
           sh -n Tests/Scripts/package-debug-test.sh
+          sh -n Tests/Scripts/developer-id-release-lane-test.sh
           sh -n Tests/Scripts/release-candidate-gate-test.sh
           sh -n Tests/Scripts/v0.1-release-gate-test.sh
           sh -n Tests/Scripts/quicklook-preview-contract-test.sh
@@ -125,6 +134,8 @@ jobs:
           sh -n Tests/Scripts/log-privacy-test.sh
       - name: Validate packaging scripts
         run: Tests/Scripts/package-debug-test.sh
+      - name: Validate Developer ID release lane scripts
+        run: Tests/Scripts/developer-id-release-lane-test.sh
       - name: Validate release gate script
         run: Tests/Scripts/release-candidate-gate-test.sh
       - name: Validate version consistency gate
@@ -154,6 +165,8 @@ jobs:
         run: git diff --check
       - name: Install XcodeGen
         run: brew install xcodegen
+      - name: Validate Developer ID package dry run
+        run: Scripts/package-developer-id.sh --dry-run
       - name: Validate XcodeGen spec syntax
         run: xcodegen dump --spec project.yml >/tmp/marklook-project-dump.yml
       - name: Generate Xcode project
