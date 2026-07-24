@@ -54,7 +54,9 @@ open_cmd="${MARKLOOK_RC_OPEN:-open}"
 lsregister_cmd="${MARKLOOK_RC_LSREGISTER:-/System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister}"
 pluginkit_cmd="${MARKLOOK_RC_PLUGINKIT:-pluginkit}"
 package_debug="${MARKLOOK_RC_PACKAGE_DEBUG:-$repo_root/Scripts/package-debug.sh}"
+package_developer_id="${MARKLOOK_RC_PACKAGE_DEVELOPER_ID:-$repo_root/Scripts/package-developer-id.sh}"
 validate_package_artifact="${MARKLOOK_RC_VALIDATE_PACKAGE_ARTIFACT:-$repo_root/Scripts/validate-package-artifact.sh}"
+validate_developer_id_artifact="${MARKLOOK_RC_VALIDATE_DEVELOPER_ID_ARTIFACT:-$repo_root/Scripts/validate-developer-id-artifact.sh}"
 validate_built_bundle="${MARKLOOK_RC_VALIDATE_BUILT_BUNDLE:-$repo_root/Scripts/validate-built-bundle.sh}"
 validate_preview_contract="${MARKLOOK_RC_VALIDATE_PREVIEW_CONTRACT:-$repo_root/Scripts/validate-quicklook-preview-contract.sh}"
 validate_renderer_security="${MARKLOOK_RC_VALIDATE_RENDERER_SECURITY:-$repo_root/Scripts/validate-renderer-security.sh}"
@@ -63,10 +65,12 @@ validate_thumbnail_boundaries="${MARKLOOK_RC_VALIDATE_THUMBNAIL_BOUNDARIES:-$rep
 validate_supported_types="${MARKLOOK_RC_VALIDATE_SUPPORTED_TYPES:-$repo_root/Scripts/validate-supported-types.sh}"
 validate_version_consistency="${MARKLOOK_RC_VALIDATE_VERSION_CONSISTENCY:-$repo_root/Scripts/validate-version-consistency.rb}"
 package_debug_test="${MARKLOOK_RC_PACKAGE_DEBUG_TEST:-$repo_root/Tests/Scripts/package-debug-test.sh}"
+developer_id_lane_test="${MARKLOOK_RC_DEVELOPER_ID_LANE_TEST:-$repo_root/Tests/Scripts/developer-id-release-lane-test.sh}"
 quicklook_preview_contract_test="${MARKLOOK_RC_QUICKLOOK_PREVIEW_CONTRACT_TEST:-$repo_root/Tests/Scripts/quicklook-preview-contract-test.sh}"
 validate_signed_mode_test="${MARKLOOK_RC_VALIDATE_SIGNED_MODE_TEST:-$repo_root/Tests/Scripts/validate-signed-quicklook-mode-test.sh}"
 doctor_signing_test="${MARKLOOK_RC_DOCTOR_SIGNING_TEST:-$repo_root/Tests/Scripts/doctor-signing-team-id-test.sh}"
 version_consistency_test="${MARKLOOK_RC_VERSION_CONSISTENCY_TEST:-$repo_root/Tests/Scripts/version-consistency-test.sh}"
+doctor_release_identity="${MARKLOOK_RC_DOCTOR_RELEASE_IDENTITY:-$repo_root/Scripts/doctor-release-identity.sh}"
 build_apple_development="${MARKLOOK_RC_BUILD_APPLE_DEVELOPMENT:-$repo_root/Scripts/build-local-apple-development.sh}"
 validate_signed_quicklook="${MARKLOOK_RC_VALIDATE_SIGNED_QUICKLOOK:-$repo_root/Scripts/validate-signed-quicklook.sh}"
 diagnose_thumbnail_selection="${MARKLOOK_RC_DIAGNOSE_THUMBNAIL_SELECTION:-$repo_root/Scripts/diagnose-thumbnail-selection.sh}"
@@ -220,18 +224,23 @@ run_ci_gate() {
   run "$ruby_cmd" -e "require 'yaml'; YAML.load_file('.github/workflows/ci.yml')"
 
   run sh -n Scripts/package-debug.sh
+  run sh -n Scripts/package-developer-id.sh
   run sh -n Scripts/validate-package-artifact.sh
+  run sh -n Scripts/validate-developer-id-artifact.sh
   run sh -n Scripts/validate-release-candidate.sh
   run sh -n Scripts/validate-v0.1.0-release-candidate.sh
   run "$ruby_cmd" -c Scripts/validate-version-consistency.rb
   run sh -n Tests/Scripts/package-debug-test.sh
+  run sh -n Tests/Scripts/developer-id-release-lane-test.sh
   run sh -n Tests/Scripts/quicklook-preview-contract-test.sh
   run sh -n Tests/Scripts/validate-signed-quicklook-mode-test.sh
   run sh -n Tests/Scripts/doctor-signing-team-id-test.sh
   run sh -n Tests/Scripts/v0.1-release-gate-test.sh
   run sh -n Tests/Scripts/version-consistency-test.sh
+  run sh -n "$doctor_release_identity"
 
   run "$package_debug_test"
+  run "$developer_id_lane_test"
   run "$quicklook_preview_contract_test"
   run "$validate_signed_mode_test"
   run "$doctor_signing_test"
@@ -244,6 +253,7 @@ run_ci_gate() {
   run "$validate_version_consistency"
 
   run_to_file "$project_dump" "$xcodegen_cmd" dump --spec project.yml
+  run "$package_developer_id" --dry-run
   run "$xcodegen_cmd" generate
 
   rm -rf "$derived_data"

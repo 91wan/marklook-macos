@@ -13,6 +13,7 @@ Use this checklist before preparing a public MarkLook release candidate.
 - Confirm Issue #6 diagnostics dashboard acceptance is closed.
 - Confirm `Docs/v0.1.0-release-gate.md` is current.
 - For v0.1.1 source/local-validation patches, confirm `Docs/v0.1.1-source-local-validation.md` is current.
+- For public binary releases, confirm `Docs/developer-id-release-lane.md` and `Docs/public-binary-release-checklist.md` are current.
 - Do not create a `v0.1.0` tag inside a PR branch.
 - Do not create a `v0.1.1` tag inside a PR branch.
 
@@ -35,16 +36,21 @@ Use this checklist before preparing a public MarkLook release candidate.
 - Validate the unsigned package with `Scripts/validate-package-artifact.sh <zip>`.
 - Generate the local Apple Development package with `DEVELOPMENT_TEAM=<TEAM_ID> Scripts/package-debug.sh --apple-development`.
 - Validate the Apple Development package with `Scripts/validate-package-artifact.sh <zip>`.
+- Run `Scripts/package-developer-id.sh --dry-run`.
 - Record the package ZIP SHA-256.
 - Confirm `MANIFEST.txt` includes build mode, signing summary, TeamIdentifier when available, package path, ZIP SHA-256, AppIcon status, known limitations, and the public release caveat.
 
 ## Public distribution gates
 
 - Confirm Developer ID Application signing is available before making a public release artifact.
+- Run `Scripts/doctor-release-identity.sh`.
+- Run `DEVELOPER_ID_APPLICATION="Developer ID Application: <NAME> (<TEAM_ID>)" Scripts/package-developer-id.sh --developer-id`.
+- Run `Scripts/validate-developer-id-artifact.sh --signed-only <APP_OR_ZIP>`.
 - Confirm hardened runtime remains enabled for distribution signing.
 - Submit the release artifact for notarization.
 - Staple the notarization ticket to the app or disk image.
 - Run `spctl --assess --type execute --verbose=4 <APP_OR_DMG>` on the stapled artifact.
+- Run `Scripts/validate-developer-id-artifact.sh --notarized <APP_OR_ZIP>`.
 - Do not claim public release trust from Apple Development or unsigned CI packages.
 
 ## Release publication

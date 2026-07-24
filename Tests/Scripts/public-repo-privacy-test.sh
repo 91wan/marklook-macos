@@ -13,6 +13,18 @@ fi
 fixture_root="$(mktemp -d)"
 trap 'rm -rf "$fixture_root"' EXIT
 
+security_stub="$fixture_root/security"
+cat >"$security_stub" <<'STUB'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$*" == "find-identity -v -p codesigning" ]]; then
+  printf '  1) ABCDEF0123456789 "Developer ID Application: Fixture (%s)"\n' "$MARKLOOK_TEST_TEAM_ID"
+  exit 0
+fi
+exit 2
+STUB
+chmod +x "$security_stub"
+
 create_repo() {
   local name="$1"
   local repo="$fixture_root/$name"
@@ -72,6 +84,23 @@ expect_success() {
   grep -q 'public repo privacy validation: PASS (archive)' "$repo/archive.out"
 }
 
+expect_local_identity_failure() {
+  local repo
+  local team_id="ABCDE""12345"
+  repo="$(create_repo local-identity)"
+  printf '%s\n' "allowed_signers = [\"$team_id\"]" >"$repo/README.md"
+  commit_repo "$repo"
+
+  if (cd "$repo" && env \
+    MARKLOOK_PRIVACY_SECURITY="$security_stub" \
+    MARKLOOK_TEST_TEAM_ID="$team_id" \
+    "$validator") >"$repo/out" 2>&1; then
+    echo "error: expected failure for local signing TeamIdentifier" >&2
+    exit 1
+  fi
+  grep -q 'local signing TeamIdentifier' "$repo/out"
+}
+
 rejects_docs_evidence_png() {
   local repo="$1"
   mkdir -p "$repo/Docs/evidence"
@@ -109,6 +138,16 @@ rejects_teamidentifier() {
   printf '%s\n' "TeamIdentifier: $team_id" >"$repo/README.md"
 }
 
+rejects_contextual_teamidentifier_token() {
+  local repo="$1"
+  local team_id="ABCDE""12345"
+  cat >"$repo/check.sh" <<EOF
+assert_no_local_team_ids() {
+  grep -Eq '$team_id' output.txt
+}
+EOF
+}
+
 rejects_apple_development_subject() {
   local repo="$1"
   local subject_id="12345""67890"
@@ -137,8 +176,11 @@ expect_failure rejects_raw_github_evidence_png_url 'raw GitHub Docs/evidence ima
 expect_failure rejects_github_blob_evidence_png_url 'GitHub blob Docs/evidence image link'
 expect_failure rejects_users_path 'raw local home path'
 expect_failure rejects_teamidentifier 'real-looking TeamIdentifier declaration'
+expect_failure rejects_contextual_teamidentifier_token 'contextual TeamIdentifier token'
 expect_failure rejects_apple_development_subject 'real-looking Apple Development subject'
 expect_archive_failure rejects_docs_evidence_png 'Docs/evidence/foo.png'
+expect_archive_failure rejects_contextual_teamidentifier_token 'contextual TeamIdentifier token'
+expect_local_identity_failure
 expect_success allows_synthetic_placeholders_and_appicon
 
 echo "public repo privacy tests: PASS"

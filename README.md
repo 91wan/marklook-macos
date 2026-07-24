@@ -74,6 +74,33 @@ Scripts/validate-package-artifact.sh dist/MarkLook-0.1.0-debug-<shortsha>/MarkLo
 
 Unsigned CI packages are not launchable trust artifacts. Apple Development packages are local validation only. Public distribution still requires Developer ID Application signing, hardened runtime, notarization, and stapling; see `Docs/signing-notarization.md` and `Docs/release-checklist.md`.
 
+## Developer ID public binary lane
+
+Public binary distribution uses a separate Developer ID lane. Start with the identity doctor and CI-safe dry run:
+
+```bash
+Scripts/doctor-release-identity.sh
+Scripts/package-developer-id.sh --dry-run
+```
+
+Only a maintainer machine with a Developer ID Application identity can create a signed public-distribution candidate:
+
+```bash
+DEVELOPER_ID_APPLICATION="Developer ID Application: <NAME> (<TEAM_ID>)" \
+  Scripts/package-developer-id.sh --developer-id
+Scripts/validate-developer-id-artifact.sh --signed-only dist/MarkLook-<version>-developer-id-<shortsha>/MarkLook-<version>-developer-id-<shortsha>.zip
+```
+
+Notarized publication additionally requires a local `notarytool` keychain profile:
+
+```bash
+DEVELOPER_ID_APPLICATION="Developer ID Application: <NAME> (<TEAM_ID>)" \
+NOTARYTOOL_PROFILE=<PROFILE> \
+  Scripts/package-developer-id.sh --developer-id --notarize
+```
+
+See `Docs/developer-id-release-lane.md` and `Docs/public-binary-release-checklist.md`. Do not publish a GitHub Release, Homebrew cask, or public binary trust claim from unsigned CI or Apple Development packages.
+
 ## Release candidate gate
 
 Run the CI-compatible gate:
