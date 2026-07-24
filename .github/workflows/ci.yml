@@ -73,6 +73,7 @@ jobs:
           test -f Tests/Scripts/version-consistency-test.sh
           test -f Tests/Scripts/log-privacy-test.sh
           test -f Tests/Scripts/built-uti-declarations-test.sh
+          test -f Tests/Scripts/thumbnail-diagnostic-argv-test.sh
       - name: Validate plists and entitlements
         run: |
           plutil -lint MarkLookApp/Info.plist
@@ -128,6 +129,7 @@ jobs:
           sh -n Tests/Scripts/public-repo-privacy-test.sh
           sh -n Tests/Scripts/supported-types-test.sh
           sh -n Tests/Scripts/built-uti-declarations-test.sh
+          sh -n Tests/Scripts/thumbnail-diagnostic-argv-test.sh
           sh -n Tests/Scripts/version-consistency-test.sh
           ruby -c Scripts/validate-built-uti-declarations.rb
           ruby -c Scripts/validate-version-consistency.rb
@@ -161,6 +163,8 @@ jobs:
         run: Tests/Scripts/supported-types-test.sh
       - name: Validate built UTI declaration gate
         run: Tests/Scripts/built-uti-declarations-test.sh
+      - name: Validate thumbnail diagnostic argv safety
+        run: Tests/Scripts/thumbnail-diagnostic-argv-test.sh
       - name: Check whitespace
         run: git diff --check
       - name: Install XcodeGen

@@ -79,12 +79,15 @@ capture_all() {
   fi
 }
 
-capture_shell() {
+capture_matching() {
   output_file="$1"
-  shift
-  printf '+ %s | tee %q\n' "$*" "$output_file"
+  pattern="$2"
+  shift 2
+  printf '+'
+  printf ' %q' "$@"
+  printf ' | grep -i %q | tee %q\n' "$pattern" "$output_file"
   set +e
-  bash -lc "$*" | tee "$output_file"
+  "$@" | grep -i "$pattern" | tee "$output_file"
   command_status="${PIPESTATUS[0]}"
   set -e
   if [ "$command_status" -ne 0 ]; then
@@ -104,7 +107,7 @@ capture_all "$output_dir/app-codesign-verify.txt" codesign --verify --deep --str
 
 capture_all "$output_dir/thumbnail-codesign-dv.txt" codesign -dv --verbose=4 "$thumbnail_appex"
 capture_all "$output_dir/thumbnail-codesign-verify.txt" codesign --verify --deep --strict --verbose=4 "$thumbnail_appex"
-capture_shell "$output_dir/thumbnail-entitlements.txt" "codesign -d --entitlements - '$thumbnail_appex' || true"
+capture_all "$output_dir/thumbnail-entitlements.txt" codesign -d --entitlements - "$thumbnail_appex"
 
 capture "$output_dir/thumbnail-binary-file.txt" file "$thumbnail_binary"
 capture "$output_dir/thumbnail-info-plist.txt" plutil -p "$thumbnail_appex/Contents/Info.plist"
@@ -112,7 +115,7 @@ capture "$output_dir/thumbnail-info-plist.txt" plutil -p "$thumbnail_appex/Conte
 capture "$output_dir/pluginkit-thumbnail-family.txt" pluginkit -mAv -p com.apple.quicklook.thumbnail
 capture "$output_dir/pluginkit-thumbnail-exact.txt" pluginkit -mAv -i com.91wan.MarkLook.Thumbnail
 capture "$output_dir/pluginkit-thumbnail-exact-all.txt" pluginkit -mADv -i com.91wan.MarkLook.Thumbnail
-capture_shell "$output_dir/pluginkit-all-marklook.txt" "pluginkit -mADv | grep -i MarkLook || true"
+capture_matching "$output_dir/pluginkit-all-marklook.txt" MarkLook pluginkit -mADv
 
 if grep -i 'MarkLook' "$output_dir/pluginkit-all-marklook.txt" | grep -Fv "$app/Contents/PlugIns" >/dev/null; then
   echo
