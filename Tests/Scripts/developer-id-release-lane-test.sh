@@ -353,14 +353,16 @@ restore_entitlements
 assert_status 1 "$fixture_root/validator-network-entitlement.out" run_validator
 grep -q 'MarkLookThumbnail.appex entitlements differ' "$fixture_root/validator-network-entitlement.out"
 
-assert_unsafe_derived_data() {
+assert_derived_data_status() {
+  local expected_status="$1"
+  shift
   local label="$1"
   local value="$2"
   local caller_tmpdir="${3:-${TMPDIR:-/tmp}}"
   local packager_under_test="${4:-$packager}"
-  local output_file="$fixture_root/unsafe-derived-$label.out"
+  local output_file="$fixture_root/derived-$label.out"
   : >"$stub_log"
-  assert_status 1 "$output_file" \
+  assert_status "$expected_status" "$output_file" \
     env MARKLOOK_DEVID_TEST_LOG="$stub_log" \
       TMPDIR="$caller_tmpdir" \
       MARKLOOK_DEVID_DERIVED_DATA="$value" \
@@ -374,12 +376,24 @@ assert_unsafe_derived_data() {
       MARKLOOK_DEVID_VALIDATE_RELEASE_CANDIDATE="$stub_bin/validate-release-candidate" \
       MARKLOOK_DEVID_VALIDATE_ARTIFACT="$stub_bin/validate-artifact" \
       "$packager_under_test" --dry-run
-  grep -q 'unsafe MARKLOOK_DEVID_DERIVED_DATA' "$output_file"
+  if [ "$expected_status" -eq 0 ]; then
+    grep -q '^DRY RUN: Developer ID package lane' "$output_file"
+  else
+    grep -q 'unsafe MARKLOOK_DEVID_DERIVED_DATA' "$output_file"
+  fi
   if [ -s "$stub_log" ]; then
-    echo "error: unsafe DerivedData value invoked a release tool: $label" >&2
+    echo "error: DerivedData preflight invoked a release tool: $label" >&2
     cat "$stub_log" >&2
     exit 1
   fi
+}
+
+assert_unsafe_derived_data() {
+  assert_derived_data_status 1 "$@"
+}
+
+assert_accepted_derived_data() {
+  assert_derived_data_status 0 "$@"
 }
 
 assert_unsafe_derived_data filesystem-root /
@@ -388,10 +402,25 @@ assert_unsafe_derived_data repository-root "$repo_root"
 assert_unsafe_derived_data repository-build-root "$repo_root/.build"
 assert_unsafe_derived_data poisoned-home-tmpdir "$HOME/Documents" "$HOME"
 assert_unsafe_derived_data poisoned-repo-tmpdir "$repo_root/Docs" "$repo_root"
+assert_unsafe_derived_data repository-parent "$(dirname "$repo_root")"
+
+assert_accepted_derived_data relative-build-child .build/path-policy-characterization/missing
+assert_accepted_derived_data nested-missing-child "$fixture_root/missing/nested/Derived Data"
+assert_accepted_derived_data normalized-child "$fixture_root/unused/../normalized"
+mkdir -p "$fixture_root/allowed target"
+ln -s "$fixture_root/allowed target" "$fixture_root/allowed-link"
+assert_accepted_derived_data symlink-to-temp "$fixture_root/allowed-link/nested/Derived Data"
+ln -s "$repo_root/Docs" "$fixture_root/repository-link"
+assert_unsafe_derived_data symlink-to-repository "$fixture_root/repository-link/missing/nested"
+ln -s "$HOME" "$fixture_root/home-link"
+assert_unsafe_derived_data symlink-to-home "$fixture_root/home-link/missing/nested"
+test ! -e "$fixture_root/missing"
+test ! -e "$fixture_root/allowed target/nested"
 
 temporary_checkout="$fixture_root/temporary-checkout"
 mkdir -p "$temporary_checkout/Scripts" "$temporary_checkout/Docs"
 cp "$packager" "$temporary_checkout/Scripts/package-developer-id.sh"
+cp "$repo_root/Scripts/release-path-policy.sh" "$temporary_checkout/Scripts/release-path-policy.sh"
 chmod +x "$temporary_checkout/Scripts/package-developer-id.sh"
 assert_unsafe_derived_data \
   temporary-checkout-root \
@@ -407,10 +436,11 @@ assert_unsafe_derived_data \
 dirty_checkout="$fixture_root/dirty-checkout"
 mkdir -p "$dirty_checkout/Scripts" "$dirty_checkout/Docs"
 cp "$packager" "$dirty_checkout/Scripts/package-developer-id.sh"
+cp "$repo_root/Scripts/release-path-policy.sh" "$dirty_checkout/Scripts/release-path-policy.sh"
 chmod +x "$dirty_checkout/Scripts/package-developer-id.sh"
 printf 'clean\n' >"$dirty_checkout/Docs/source.txt"
 /usr/bin/git -C "$dirty_checkout" init -q
-/usr/bin/git -C "$dirty_checkout" add Scripts/package-developer-id.sh Docs/source.txt
+/usr/bin/git -C "$dirty_checkout" add Scripts/package-developer-id.sh Scripts/release-path-policy.sh Docs/source.txt
 /usr/bin/git -C "$dirty_checkout" \
   -c user.name='MarkLook Tests' \
   -c user.email='tests@example.invalid' \

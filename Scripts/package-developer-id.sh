@@ -118,70 +118,7 @@ require_lane_tools() {
   require_executable "$validate_artifact"
 }
 
-canonicalize_disposable_derived_data() {
-  local input="$1"
-  local resolved
-  local repo_build_root="$repo_root/.build"
-  local darwin_user_temp
-  local darwin_user_temp_root
-  local private_tmp_root
-
-  if ! resolved="$("$ruby_cmd" - "$input" <<'RUBY'
-path = File.expand_path(ARGV.fetch(0))
-cursor = path
-suffix = []
-
-until File.exist?(cursor) || File.symlink?(cursor)
-  parent = File.dirname(cursor)
-  abort "could not resolve path: #{path}" if parent == cursor
-  suffix.unshift(File.basename(cursor))
-  cursor = parent
-end
-
-puts File.join(File.realpath(cursor), *suffix)
-RUBY
-  )"; then
-    echo "error: could not resolve MARKLOOK_DEVID_DERIVED_DATA: $input" >&2
-    exit 1
-  fi
-
-  if ! darwin_user_temp="$("$getconf_cmd" DARWIN_USER_TEMP_DIR 2>/dev/null)" || [ -z "$darwin_user_temp" ]; then
-    echo "error: could not resolve the OS-owned user temporary directory" >&2
-    exit 1
-  fi
-  darwin_user_temp_root="$("$ruby_cmd" -e 'puts File.realpath(ARGV.fetch(0))' "$darwin_user_temp")"
-  private_tmp_root="$("$ruby_cmd" -e 'puts File.realpath(ARGV.fetch(0))' /private/tmp)"
-
-  case "$resolved" in
-    "$repo_root"|"$repo_root"/*)
-      case "$resolved" in
-        "$repo_build_root"/*)
-          ;;
-        *)
-          echo "error: unsafe MARKLOOK_DEVID_DERIVED_DATA overlaps the repository: $input" >&2
-          exit 1
-          ;;
-      esac
-      ;;
-  esac
-
-  if [ "$resolved" = "/" ] || [ "$resolved" = "$repo_root" ] || [[ "$repo_root" == "$resolved"/* ]]; then
-    echo "error: unsafe MARKLOOK_DEVID_DERIVED_DATA contains the repository: $input" >&2
-    exit 1
-  fi
-
-  case "$resolved" in
-    "$repo_build_root"/*|"$darwin_user_temp_root"/*|"$private_tmp_root"/*)
-      ;;
-    *)
-      echo "error: unsafe MARKLOOK_DEVID_DERIVED_DATA: $input" >&2
-      echo "Use a child of $repo_build_root or a system temporary directory." >&2
-      exit 1
-      ;;
-  esac
-
-  printf '%s\n' "$resolved"
-}
+source "$script_dir/release-path-policy.sh"
 
 require_clean_worktree() {
   local status
@@ -199,7 +136,7 @@ require_clean_worktree() {
 
 require_lane_tools
 derived_data_input="${MARKLOOK_DEVID_DERIVED_DATA:-.build/DeveloperIDDerivedData}"
-derived_data="$(canonicalize_disposable_derived_data "$derived_data_input")"
+derived_data="$(canonicalize_disposable_derived_data "$derived_data_input" "$repo_root" "$ruby_cmd" "$getconf_cmd")"
 
 if [ "$dry_run" -eq 1 ]; then
   echo "DRY RUN: Developer ID package lane"
