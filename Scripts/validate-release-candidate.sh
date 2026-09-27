@@ -74,24 +74,31 @@ doctor_release_identity="${MARKLOOK_RC_DOCTOR_RELEASE_IDENTITY:-$repo_root/Scrip
 build_apple_development="${MARKLOOK_RC_BUILD_APPLE_DEVELOPMENT:-$repo_root/Scripts/build-local-apple-development.sh}"
 validate_signed_quicklook="${MARKLOOK_RC_VALIDATE_SIGNED_QUICKLOOK:-$repo_root/Scripts/validate-signed-quicklook.sh}"
 diagnose_thumbnail_selection="${MARKLOOK_RC_DIAGNOSE_THUMBNAIL_SELECTION:-$repo_root/Scripts/diagnose-thumbnail-selection.sh}"
-dist_root="${MARKLOOK_RC_DIST_DIR:-$repo_root/dist}"
-install_app="${MARKLOOK_RC_INSTALL_APP:-/Applications/MarkLook.app}"
-derived_data="${MARKLOOK_RC_DERIVED_DATA:-.build/ReleaseCandidateDerivedData}"
+source "$script_dir/release-path-policy.sh"
+
+# Fixed admission tools run before overridable release tools or the EXIT trap.
+dist_root="$(canonicalize_release_path dist MARKLOOK_RC_DIST_DIR "${MARKLOOK_RC_DIST_DIR-$repo_root/dist}" "$repo_root")"
+install_app="$(canonicalize_release_path installApp MARKLOOK_RC_INSTALL_APP "${MARKLOOK_RC_INSTALL_APP-/Applications/MarkLook.app}" "$repo_root")"
+derived_data="$(canonicalize_release_path derivedData MARKLOOK_RC_DERIVED_DATA "${MARKLOOK_RC_DERIVED_DATA-.build/ReleaseCandidateDerivedData}" "$repo_root")"
+renderer_fixture="$(canonicalize_release_path output MARKLOOK_RC_RENDERER_FIXTURE "${MARKLOOK_RC_RENDERER_FIXTURE-.build/ReleaseCandidateReports/renderer-safe.html}" "$repo_root")"
+project_dump="$(canonicalize_release_path output MARKLOOK_RC_PROJECT_DUMP "${MARKLOOK_RC_PROJECT_DUMP-.build/ReleaseCandidateReports/project-dump.yml}" "$repo_root")"
+test_logs=()
+for bundle in MarkLookAppTests MarkLookPreviewTests MarkLookThumbnailTests; do
+  test_logs+=("$(canonicalize_release_path output XCTest-log ".build/ReleaseCandidateReports/$bundle-xctest.log" "$repo_root")")
+done
+require_disjoint_release_paths "$dist_root" "$install_app" "$derived_data" "$renderer_fixture" "$project_dump" "${test_logs[@]}"
+app_identifier="$(/usr/bin/ruby -ryaml -e 'puts YAML.safe_load(File.read(ARGV.fetch(0)), aliases: false).fetch("targets").fetch("MarkLook").fetch("settings").fetch("base").fetch("PRODUCT_BUNDLE_IDENTIFIER")' project.yml)"
+validate_installed_app_identity "$install_app" "$app_identifier"
+
 short_sha="$(git rev-parse --short HEAD)"
 commit_sha="$(git rev-parse HEAD)"
 version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' MarkLookApp/Info.plist)"
-renderer_fixture="${MARKLOOK_RC_RENDERER_FIXTURE:-/tmp/marklook-renderer-safe-${version}.html}"
-project_dump="${MARKLOOK_RC_PROJECT_DUMP:-/tmp/marklook-project-dump-${version}.yml}"
 artifact_stem="MarkLook-${version}-debug-${short_sha}"
 package_zip="$dist_root/$artifact_stem/$artifact_stem.zip"
 package_app="$dist_root/$artifact_stem/MarkLook.app"
 package_checksum=""
 
 release_candidate_app="$derived_data/Build/Products/Debug/MarkLook.app"
-case "$release_candidate_app" in
-  /*) ;;
-  *) release_candidate_app="$repo_root/$release_candidate_app" ;;
-esac
 
 unregister_disposable_build() {
   local app="$1"
@@ -107,6 +114,10 @@ cleanup_release_candidate_registration() {
 }
 
 trap cleanup_release_candidate_registration EXIT
+
+for output_file in "$renderer_fixture" "$project_dump" "${test_logs[@]}"; do
+  mkdir -p "$(dirname "$output_file")"
+done
 
 run() {
   printf '+'
@@ -141,7 +152,7 @@ wait_for_test_bundles() {
 run_xctest_bundle() {
   local bundle_name="$1"
   local bundle_path="$derived_data/Build/Products/Debug/$bundle_name.xctest"
-  local log_file="/tmp/marklook-${version}-$bundle_name-xctest.log"
+  local log_file="$2"
 
   printf '+'
   printf ' %q' "$xcrun_cmd" xctest "$bundle_path"
@@ -156,9 +167,9 @@ run_xctest_bundle() {
 
 run_xctest_bundles() {
   wait_for_test_bundles
-  run_xctest_bundle MarkLookAppTests
-  run_xctest_bundle MarkLookPreviewTests
-  run_xctest_bundle MarkLookThumbnailTests
+  run_xctest_bundle MarkLookAppTests "${test_logs[0]}"
+  run_xctest_bundle MarkLookPreviewTests "${test_logs[1]}"
+  run_xctest_bundle MarkLookThumbnailTests "${test_logs[2]}"
 }
 
 quit_marklook_if_running() {

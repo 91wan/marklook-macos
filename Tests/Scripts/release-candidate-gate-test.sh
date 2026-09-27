@@ -112,6 +112,168 @@ STUB
 
 chmod +x "$stub_bin"/*
 
+# Stop at the first release tool even when exercising the unfixed parent. The
+# refusal must precede both this tool and the EXIT registration cleanup.
+cat >"$stub_bin/stop" <<'STUB'
+#!/usr/bin/env bash
+printf 'unexpected release tool\n' >>"$MARKLOOK_RC_TEST_LOG"
+exit 97
+STUB
+chmod +x "$stub_bin/stop"
+
+guard_root="$fixture_root/admission"
+mkdir -p "$guard_root/derived" "$guard_root/dist"
+printf 'keep\n' >"$guard_root/derived/sentinel"
+printf 'keep\n' >"$guard_root/dist/sentinel"
+probe_gate="$gate"
+assert_rejected_before_tools() {
+  local name="$1" result
+  shift
+  : >"$stub_log"
+  set +e
+  env MARKLOOK_RC_TEST_LOG="$stub_log" \
+    MARKLOOK_RC_RUBY="$stub_bin/stop" \
+    MARKLOOK_RC_PLUGINKIT="$stub_bin/pass" \
+    MARKLOOK_RC_LSREGISTER="$stub_bin/pass" \
+    MARKLOOK_RC_DERIVED_DATA="$guard_root/derived" \
+    MARKLOOK_RC_DIST_DIR="$guard_root/dist" \
+    MARKLOOK_RC_PROJECT_DUMP="$guard_root/uncreated/project.yml" \
+    MARKLOOK_RC_RENDERER_FIXTURE="$guard_root/uncreated/renderer.html" \
+    "$@" "$probe_gate" --ci >"$fixture_root/$name.out" 2>&1
+  result="$?"
+  set -e
+  if [ "$result" -ne 1 ] || ! grep -q 'error: unsafe' "$fixture_root/$name.out" || [ -s "$stub_log" ]; then
+    echo "error: $name did not fail before release tools/cleanup (exit $result)" >&2
+    cat "$fixture_root/$name.out" "$stub_log" >&2
+    exit 1
+  fi
+  test ! -e "$guard_root/uncreated"
+  test "$(cat "$guard_root/derived/sentinel")" = keep
+  test "$(cat "$guard_root/dist/sentinel")" = keep
+}
+
+assert_rejected_before_tools derived-root MARKLOOK_RC_DERIVED_DATA=/
+assert_rejected_before_tools derived-repo MARKLOOK_RC_DERIVED_DATA="$repo_root"
+assert_rejected_before_tools derived-ancestor MARKLOOK_RC_DERIVED_DATA="$(dirname "$repo_root")"
+assert_rejected_before_tools derived-build-root MARKLOOK_RC_DERIVED_DATA="$repo_root/.build"
+assert_rejected_before_tools derived-home MARKLOOK_RC_DERIVED_DATA="$HOME"
+assert_rejected_before_tools poisoned-tmp-home TMPDIR="$HOME" MARKLOOK_RC_DERIVED_DATA="$HOME/Documents"
+assert_rejected_before_tools poisoned-tmp-repo TMPDIR="$repo_root" MARKLOOK_RC_DERIVED_DATA="$repo_root/Docs"
+assert_rejected_before_tools derived-temp-root MARKLOOK_RC_DERIVED_DATA="$(getconf DARWIN_USER_TEMP_DIR)"
+assert_rejected_before_tools derived-private-tmp MARKLOOK_RC_DERIVED_DATA=/private/tmp
+assert_rejected_before_tools dist-repo MARKLOOK_RC_DIST_DIR="$repo_root"
+assert_rejected_before_tools dist-build MARKLOOK_RC_DIST_DIR="$repo_root/.build/dist"
+assert_rejected_before_tools dist-private-tmp MARKLOOK_RC_DIST_DIR=/private/tmp
+assert_rejected_before_tools project-source MARKLOOK_RC_PROJECT_DUMP="$repo_root/project.yml"
+assert_rejected_before_tools renderer-source MARKLOOK_RC_RENDERER_FIXTURE="$repo_root/README.md"
+assert_rejected_before_tools project-directory MARKLOOK_RC_PROJECT_DUMP="$guard_root"
+assert_rejected_before_tools output-missing-parent MARKLOOK_RC_PROJECT_DUMP="$guard_root/derived/sentinel/missing.yml"
+assert_rejected_before_tools derived-file MARKLOOK_RC_DERIVED_DATA="$guard_root/derived/sentinel"
+assert_rejected_before_tools dist-file MARKLOOK_RC_DIST_DIR="$guard_root/dist/sentinel"
+assert_rejected_before_tools overlap-directories MARKLOOK_RC_DIST_DIR="$guard_root/derived/nested"
+assert_rejected_before_tools output-in-derived MARKLOOK_RC_PROJECT_DUMP="$guard_root/derived/project.yml"
+assert_rejected_before_tools output-in-dist MARKLOOK_RC_RENDERER_FIXTURE="$guard_root/dist/renderer.html"
+assert_rejected_before_tools outputs-equal MARKLOOK_RC_PROJECT_DUMP="$guard_root/uncreated/renderer.html"
+assert_rejected_before_tools outputs-case-alias MARKLOOK_RC_PROJECT_DUMP="$guard_root/uncreated/RENDERER.html"
+assert_rejected_before_tools install-root MARKLOOK_RC_INSTALL_APP=/Applications
+assert_rejected_before_tools install-temporary MARKLOOK_RC_INSTALL_APP="$fixture_root/MarkLook.app"
+for key in DERIVED_DATA DIST_DIR PROJECT_DUMP RENDERER_FIXTURE INSTALL_APP; do
+  assert_rejected_before_tools "empty-$key" "MARKLOOK_RC_$key="
+done
+
+ln -s "$repo_root/Docs" "$guard_root/source-link"
+ln -s "$guard_root/derived/sentinel" "$guard_root/output-link"
+ln "$guard_root/dist/sentinel" "$guard_root/hardlink"
+mkfifo "$guard_root/fifo"
+for key in DERIVED_DATA DIST_DIR PROJECT_DUMP RENDERER_FIXTURE; do
+  assert_rejected_before_tools "escape-$key" "MARKLOOK_RC_$key=$guard_root/source-link/missing/target"
+done
+assert_rejected_before_tools output-link MARKLOOK_RC_PROJECT_DUMP="$guard_root/output-link"
+assert_rejected_before_tools output-hardlink MARKLOOK_RC_RENDERER_FIXTURE="$guard_root/hardlink"
+assert_rejected_before_tools output-fifo MARKLOOK_RC_PROJECT_DUMP="$guard_root/fifo"
+
+# A temporary checkout must not become deletable merely because it is in /tmp.
+temporary_repo="$fixture_root/temporary-repo"
+mkdir -p "$temporary_repo/Scripts" "$temporary_repo/MarkLookApp" "$temporary_repo/.build/ReleaseCandidateReports"
+cp "$repo_root/Scripts/validate-release-candidate.sh" "$repo_root/Scripts/release-path-policy.sh" "$temporary_repo/Scripts/"
+cp "$repo_root/MarkLookApp/Info.plist" "$temporary_repo/MarkLookApp/"
+cp "$repo_root/project.yml" "$temporary_repo/"
+/usr/bin/git -C "$temporary_repo" init -q
+/usr/bin/git -C "$temporary_repo" -c user.name='MarkLook Tests' -c user.email='tests@example.invalid' \
+  -c core.hooksPath=/dev/null commit --allow-empty -qm fixture
+probe_gate="$temporary_repo/Scripts/validate-release-candidate.sh"
+assert_rejected_before_tools temporary-repo-root MARKLOOK_RC_DERIVED_DATA="$temporary_repo"
+assert_rejected_before_tools temporary-repo-case-alias MARKLOOK_RC_DERIVED_DATA="$fixture_root/TEMPORARY-REPO"
+assert_rejected_before_tools temporary-repo-source MARKLOOK_RC_DIST_DIR="$temporary_repo/MarkLookApp"
+assert_rejected_before_tools internal-log-overlap MARKLOOK_RC_DERIVED_DATA="$temporary_repo/.build/ReleaseCandidateReports"
+
+# The input has no newline, but realpath follows a link to a multiline name.
+# Command substitution must never turn an admitted child into its parent.
+source "$repo_root/Scripts/release-path-policy.sh"
+printf 'keep\n' >"$temporary_repo/.build/sentinel"
+for control_name in lf cr; do
+  case "$control_name" in
+    lf) control=$'\n' ;;
+    cr) control=$'\r' ;;
+  esac
+  multiline_dir="$temporary_repo/.build/$control"
+  mkdir -p "$multiline_dir"
+  resolved_alias="$temporary_repo/resolved-$control_name"
+  ln -s "$multiline_dir" "$resolved_alias"
+  assert_rejected_before_tools "resolved-derived-$control_name" MARKLOOK_RC_DERIVED_DATA="$resolved_alias"
+  assert_rejected_before_tools "resolved-output-$control_name" MARKLOOK_RC_PROJECT_DUMP="$resolved_alias/missing/report.yml"
+
+  set +e
+  canonicalize_disposable_derived_data "$resolved_alias" "$temporary_repo" /usr/bin/ruby /usr/bin/getconf \
+    >"$fixture_root/resolved-$control_name.stdout" 2>"$fixture_root/resolved-$control_name.stderr"
+  helper_status="$?"
+  set -e
+  test "$helper_status" -eq 1
+  test ! -s "$fixture_root/resolved-$control_name.stdout"
+  grep -q 'multiline resolved path' "$fixture_root/resolved-$control_name.stderr"
+  test ! -e "$multiline_dir/missing"
+  test "$(cat "$temporary_repo/.build/sentinel")" = keep
+done
+
+ln -s "$guard_root/derived/sentinel" "$temporary_repo/.build/ReleaseCandidateReports/MarkLookAppTests-xctest.log"
+assert_rejected_before_tools internal-log-link
+probe_gate="$gate"
+
+expected_id="$(/usr/bin/ruby -ryaml -e 'puts YAML.safe_load(File.read(ARGV.fetch(0)), aliases: false).fetch("targets").fetch("MarkLook").fetch("settings").fetch("base").fetch("PRODUCT_BUNDLE_IDENTIFIER")' "$repo_root/project.yml")"
+test_app="$fixture_root/identity/MarkLook.app"
+validate_installed_app_identity "$test_app" "$expected_id"
+mkdir -p "$test_app/Contents"
+cp "$repo_root/MarkLookApp/Info.plist" "$test_app/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $expected_id" "$test_app/Contents/Info.plist"
+validate_installed_app_identity "$test_app" "$expected_id"
+assert_bad_identity() {
+  if validate_installed_app_identity "$1" "$expected_id" >"$fixture_root/identity.out" 2>&1; then
+    echo 'error: invalid installed bundle identity accepted' >&2
+    exit 1
+  fi
+  grep -q 'unsafe installed app identity' "$fixture_root/identity.out"
+}
+ln -s "$test_app" "$fixture_root/identity-link.app"
+assert_bad_identity "$fixture_root/identity-link.app"
+/usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier com.example.unrelated' "$test_app/Contents/Info.plist"
+assert_bad_identity "$test_app"
+printf 'broken plist\n' >"$test_app/Contents/Info.plist"
+assert_bad_identity "$test_app"
+mkdir -p "$fixture_root/missing-plist.app/Contents"
+assert_bad_identity "$fixture_root/missing-plist.app"
+mkdir -p "$fixture_root/linked-plist.app/Contents"
+ln -s "$repo_root/MarkLookApp/Info.plist" "$fixture_root/linked-plist.app/Contents/Info.plist"
+assert_bad_identity "$fixture_root/linked-plist.app"
+
+# Positive admission uses the same helper and original G0 entrypoint, with no IO.
+resolved_fixture="$(cd "$fixture_root" && pwd -P)"
+test "$(canonicalize_release_path dist TEST dist "$repo_root")" = "$repo_root/dist"
+test "$(canonicalize_release_path output TEST '.build/missing reports/deep/file.yml' "$repo_root")" = "$repo_root/.build/missing reports/deep/file.yml"
+test "$(canonicalize_disposable_derived_data "$fixture_root/missing derived/deep" "$repo_root" /usr/bin/ruby /usr/bin/getconf)" = "$resolved_fixture/missing derived/deep"
+test ! -e "$fixture_root/missing derived"
+test ! -e "$repo_root/.build/missing reports"
+: >"$stub_log"
+
 MARKLOOK_RC_TEST_LOG="$stub_log" \
 MARKLOOK_RC_RUBY="$stub_bin/pass" \
 MARKLOOK_RC_XCODEGEN="$stub_bin/pass" \
@@ -140,7 +302,12 @@ MARKLOOK_RC_VERSION_CONSISTENCY_TEST="$stub_bin/pass" \
 MARKLOOK_RC_DOCTOR_RELEASE_IDENTITY="$stub_bin/pass" \
 MARKLOOK_RC_DIST_DIR="$dist_dir" \
 MARKLOOK_RC_DERIVED_DATA="$fixture_root/DerivedData" \
-  "$gate" --ci >"$fixture_root/ci.out" 2>&1
+MARKLOOK_RC_PROJECT_DUMP="$fixture_root/reports/project.yml" \
+MARKLOOK_RC_RENDERER_FIXTURE="$fixture_root/reports/renderer.html" \
+  "$gate" --ci >"$fixture_root/ci.out" 2>&1 || {
+    cat "$fixture_root/ci.out" >&2
+    exit 1
+  }
 
 grep -q 'MarkLook release candidate validation: PASS' "$fixture_root/ci.out"
 grep -q '^Version: 0.1.1$' "$fixture_root/ci.out"
@@ -148,8 +315,10 @@ grep -q '^Mode: ci$' "$fixture_root/ci.out"
 grep -q '^Package path:' "$fixture_root/ci.out"
 grep -q '^Checksum:' "$fixture_root/ci.out"
 grep -q 'MarkLook-0.1.1-debug-' "$fixture_root/ci.out"
-grep -Fq "pass -u $fixture_root/DerivedData/Build/Products/Debug/MarkLook.app" "$stub_log"
-grep -Fq "pass -u $dist_dir/MarkLook-0.1.1-debug-$(git -C "$repo_root" rev-parse --short HEAD)/MarkLook.app" "$stub_log"
+grep -Fq "pass -u $resolved_fixture/DerivedData/Build/Products/Debug/MarkLook.app" "$stub_log"
+grep -Fq "pass -u $resolved_fixture/dist/MarkLook-0.1.1-debug-$(git -C "$repo_root" rev-parse --short HEAD)/MarkLook.app" "$stub_log"
+test -f "$fixture_root/reports/project.yml"
+test -f "$fixture_root/reports/renderer.html"
 
 if grep -Eq 'build-local|validate-signed|diagnose-thumbnail|apple-development|/Applications/MarkLook.app' "$stub_log"; then
   echo "error: --ci invoked signing-required or local runtime commands" >&2
