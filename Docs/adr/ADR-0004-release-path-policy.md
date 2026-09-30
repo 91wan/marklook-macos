@@ -56,3 +56,34 @@ for disposable directories and output files. Installation must additionally
 validate bundle identity; path admission alone cannot authorize replacement.
 Cleanup ownership, environment isolation, and broader adoption remain separate
 behavior changes, not implicit consequences of this extraction.
+
+## G1a: RC Path Admission
+
+After independent Plan Review, the RC gate adopts this owner before installing
+its EXIT trap or invoking any release tool. Admission uses fixed system Ruby,
+getconf, and read-only plist queries, not the RC tool overrides.
+
+- DerivedData allows strict descendants of repository `.build` or OS temporary
+  roots. Dist allows repository `dist` and its descendants, or OS temp children.
+- Project dumps, renderer fixtures, and internal XCTest logs must be regular-file
+  targets under `.build` or OS temp children. Reject linked output files,
+  non-file targets, and overlap with directories that will be removed.
+- OS temp roots come from `getconf DARWIN_USER_TEMP_DIR` and `/private/tmp`, not
+  the caller's `TMPDIR`. Resolve the nearest existing ancestor of missing paths.
+- The only installation destination is the literal `/Applications/MarkLook.app`.
+  An existing destination must be a non-linked bundle with the app's identifier.
+  This check does not authorize installation or require matching version numbers.
+- All independent targets must be disjoint. Consumers use the admitted paths;
+  report parent directories are created only after the complete preflight.
+  Overlap denials conservatively include case/Unicode-normalization aliases,
+  since macOS realpath can retain alternate casing on case-insensitive volumes.
+
+Reverse tests require empty release-tool and cleanup logs before checking the
+absence of mutations. Installation identity tests use temporary fixtures through
+the production helper, never a temporary installation override or real install.
+The existing G0 characterization and legacy gate tests remain required.
+
+G1a does not isolate inherited environments or close every nested packager path.
+That is G1b and later adoption work. Admission is not a filesystem sandbox against
+concurrent hostile path replacement; callers must control their checkout and
+disposable directories during execution.
