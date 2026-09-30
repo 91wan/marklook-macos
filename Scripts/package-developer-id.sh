@@ -152,6 +152,22 @@ fi
 
 require_clean_worktree
 
+if [ -z "${HOME:-}" ] || [ -z "${USER:-}" ]; then
+  echo "error: nested RC environment requires HOME and USER" >&2
+  exit 1
+fi
+if ! rc_tmpdir="$(/usr/bin/getconf DARWIN_USER_TEMP_DIR)" || [ ! -d "$rc_tmpdir" ]; then
+  echo "error: could not prepare the nested RC system temporary directory" >&2
+  exit 1
+fi
+rc_environment=(
+  PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+  LC_ALL=en_US.UTF-8
+  "HOME=$HOME"
+  "USER=$USER"
+  "TMPDIR=$rc_tmpdir"
+)
+
 version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' MarkLookApp/Info.plist)"
 build_number="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' MarkLookApp/Info.plist)"
 short_sha="$(/usr/bin/git rev-parse --short HEAD)"
@@ -168,9 +184,7 @@ manifest_path="$output_dir/MANIFEST.txt"
 rm -rf "$output_dir" "$derived_data"
 mkdir -p "$output_dir"
 
-/usr/bin/env \
-  -u MARKLOOK_RC_DERIVED_DATA \
-  -u MARKLOOK_RC_DIST_DIR \
+/usr/bin/env -i "${rc_environment[@]}" \
   "$validate_release_candidate" --ci
 "$xcodegen_cmd" generate
 "$xcodebuild_cmd" \

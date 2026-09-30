@@ -65,6 +65,32 @@ Scripts/validate-developer-id-artifact.sh --signed-only dist/MarkLook-<version>-
 
 Signed-only artifacts are useful for maintainer validation, but they are not the final public trust artifact.
 
+## Nested RC environment
+
+The Developer ID packager invokes the unsigned RC `--ci` gate with a clean
+environment. It passes only:
+
+- A fixed `PATH`: `/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin`.
+- A fixed `LC_ALL=en_US.UTF-8`, so system Ruby can normalize non-ASCII checkout paths.
+- Non-empty `HOME` and `USER` from the caller.
+- `TMPDIR` obtained from system `getconf DARWIN_USER_TEMP_DIR`, not caller input.
+
+No `MARKLOOK_*` variable, signing identity, development team, notary profile, or
+other ambient configuration is inherited by that child. The unsigned gate does
+not need signing or notarization credentials. The parent lane retains its own
+existing signing and notary inputs. Caller `LANG` and `LC_*` values are not inherited;
+the child locale is the fixed value above.
+
+Environment preparation fails before the packager's first cleanup or directory
+creation. This does not mean every RC failure is mutation-free: packaging has
+already prepared disposable output when the RC gate begins.
+
+Tests select a fixture launcher through the existing parent callee override. The
+launcher first verifies the clean boundary, then explicitly injects fixtures into
+the real RC entrypoint. Production has no environment passthrough switch for tests.
+This boundary does not isolate the top-level parent process, the RC-to-debug or
+validator edges, or every release script; those remain separate adoption work.
+
 ## Notarized package
 
 Notarization requires a local notarytool keychain profile created outside the repository:
