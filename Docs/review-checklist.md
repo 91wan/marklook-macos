@@ -23,6 +23,35 @@ Use this checklist for every pull request.
 - Failures, skipped checks, and local-only limitations are disclosed.
 - Diagnostics UI changes include MarkLookAppTests and `Scripts/validate-diagnostics-boundaries.sh`.
 
+For a full source candidate, run the seven script suites not covered by the RC gate,
+privacy checks, and one complete RC invocation:
+
+```sh
+Tests/Scripts/release-candidate-gate-test.sh
+Tests/Scripts/v0.1-release-gate-test.sh
+Tests/Scripts/public-repo-privacy-test.sh
+Tests/Scripts/log-privacy-test.sh
+Tests/Scripts/supported-types-test.sh
+Tests/Scripts/built-uti-declarations-test.sh
+Tests/Scripts/thumbnail-diagnostic-argv-test.sh
+Scripts/validate-public-repo-privacy.sh
+Scripts/validate-public-repo-privacy.sh --archive
+Scripts/validate-release-candidate.sh --ci
+```
+
+The RC gate owns the other six script suites (`package-debug`,
+`developer-id-release-lane`, `quicklook-preview-contract`,
+`validate-signed-quicklook-mode`, `doctor-signing-team-id`, and
+`version-consistency`), native App/Preview/Thumbnail tests, MarkdownCore tests and
+renderer-security fixture, unsigned builds, and package validation. Do not run
+those again outside the same full RC invocation solely to duplicate coverage.
+CI keeps its additional scaffold, plist/entitlement, syntax, static-boundary and
+whitespace checks; XcodeGen must be available before RC and project listing follows
+RC generation. Record exact subject, commands, results and any coverage gap.
+
+`--ci` does not replace scope-required signed, installed or interactive Quick Look
+validation, and does not authorize installation or public binary release.
+
 ## Security and privacy
 
 - No network access is added without explicit review.
