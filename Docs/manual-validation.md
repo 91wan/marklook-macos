@@ -50,8 +50,13 @@ Scripts/validate-package-artifact.sh dist/MarkLook-0.1.0-debug-<shortsha>/MarkLo
 
 Expected:
 
-- `dist/` contains `MarkLook.app`, `MANIFEST.txt`, a ZIP, and a `.sha256` file.
-- `MANIFEST.txt` records build mode, signing summary, TeamIdentifier when available, AppIcon status, package path, ZIP SHA-256, and the public release caveat.
+- Each debug artifact directory contains only `MANIFEST.txt`, a ZIP, and its `.sha256` file; no loose `MarkLook.app` is retained. Extract the ZIP explicitly when a standalone App is needed.
+- Packaged App copies and unsigned DerivedData belong to a fresh OS-owned temporary run directory. Success, ordinary failure, TERM, and INT clean only that run's App registrations and temporary files, after its active tool processes have stopped. SIGKILL and power loss cannot run this cleanup.
+- If an owned tool process group cannot stop within the bounded cleanup wait, packaging reports failure and preserves the run directory instead of deleting files under a live writer.
+- Run-directory removal failure is reported as failure, not successful cleanup; an existing failure or signal exit status is preserved.
+- `MANIFEST.txt` records build mode, a redacted signing summary, AppIcon status, relative artifact names, ZIP SHA-256, and the public release caveat. Raw signing diagnostics remain temporary.
+- The separate Apple Development source builder still owns and retains `.build/LocalDerivedData/Build/Products/Debug/MarkLook.app`; its signing and source retention are unchanged, including on failure or interruption. This is not a claim that the whole RC or signed-source lifecycle is disposable.
+- Dist and artifact paths are admitted before output cleanup, temporary-directory creation, or release-tool invocation. Caller `TMPDIR` does not expand the allowed roots.
 - `Scripts/validate-package-artifact.sh` accepts the generated package.
 - Unsigned CI packages remain CI-only artifacts.
 - Apple Development packages remain local validation artifacts.

@@ -95,7 +95,6 @@ commit_sha="$(git rev-parse HEAD)"
 version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' MarkLookApp/Info.plist)"
 artifact_stem="MarkLook-${version}-debug-${short_sha}"
 package_zip="$dist_root/$artifact_stem/$artifact_stem.zip"
-package_app="$dist_root/$artifact_stem/MarkLook.app"
 package_checksum=""
 
 release_candidate_app="$derived_data/Build/Products/Debug/MarkLook.app"
@@ -110,7 +109,6 @@ unregister_disposable_build() {
 
 cleanup_release_candidate_registration() {
   unregister_disposable_build "$release_candidate_app"
-  unregister_disposable_build "$package_app"
 }
 
 trap cleanup_release_candidate_registration EXIT
