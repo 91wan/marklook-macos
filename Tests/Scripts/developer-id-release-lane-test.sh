@@ -38,6 +38,8 @@ stub_bin="$fixture_root/bin"
 stub_log="$fixture_root/stub.log"
 mkdir -p "$stub_bin"
 touch "$stub_log"
+printf '%s\n' "$HOME" >"$fixture_root/expected-home"
+printf '%s\n' "$USER" >"$fixture_root/expected-user"
 
 cat >"$stub_bin/security" <<'STUB'
 #!/usr/bin/env bash
@@ -135,11 +137,26 @@ STUB
 cat >"$stub_bin/validate-release-candidate" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
-printf 'validate-release-candidate %s\n' "$*" >>"$MARKLOOK_DEVID_TEST_LOG"
-if [ -n "${MARKLOOK_RC_DERIVED_DATA+x}" ] || [ -n "${MARKLOOK_RC_DIST_DIR+x}" ]; then
-  echo "unsafe release-candidate path override reached the nested gate" >&2
+root="$(cd "$(dirname "$0")/.." && pwd -P)"
+printf 'validate-release-candidate %s\n' "$*" >>"$root/stub.log"
+if [ "$#" -ne 1 ] || [ "$1" != --ci ]; then
+  echo "unexpected nested gate arguments" >&2
   exit 1
 fi
+while IFS= read -r name; do
+  case "$name" in
+    PATH|LC_ALL|HOME|USER|TMPDIR|PWD|SHLVL|_) ;;
+    *)
+      echo "unexpected nested environment variable: $name" >&2
+      exit 1
+      ;;
+  esac
+done < <(compgen -e)
+test "$PATH" = /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+test "$LC_ALL" = en_US.UTF-8
+test "$HOME" = "$(cat "$root/expected-home")"
+test "$USER" = "$(cat "$root/expected-user")"
+test "$TMPDIR" = "$(/usr/bin/getconf DARWIN_USER_TEMP_DIR)"
 STUB
 
 for tool in \
@@ -478,11 +495,22 @@ fi
 absolute_derived_data="$fixture_root/absolute-derived-data"
 resolved_absolute_derived_data="$(ruby -e 'puts File.join(File.realpath(File.dirname(ARGV.fetch(0))), File.basename(ARGV.fetch(0)))' "$absolute_derived_data")"
 dist_dir="$fixture_root/dist"
+assert_status 0 "$fixture_root/package-absolute-derived.out" \
+env -i HOME="$HOME" USER="$USER" \
 MARKLOOK_DEVID_TEST_LOG="$stub_log" \
 MARKLOOK_DEVID_DERIVED_DATA="$absolute_derived_data" \
 MARKLOOK_DEVID_DIST_DIR="$dist_dir" \
 MARKLOOK_RC_DERIVED_DATA="$fixture_root/poisoned-rc-derived-data" \
 MARKLOOK_RC_DIST_DIR="$fixture_root/poisoned-rc-dist" \
+MARKLOOK_RC_PROJECT_DUMP="$fixture_root/poisoned-project-dump" \
+MARKLOOK_RC_RENDERER_FIXTURE="$fixture_root/poisoned-renderer-fixture" \
+MARKLOOK_PACKAGE_XCODEBUILD="$stub_bin/pass" \
+MARKLOOK_UNKNOWN_TEST_HOOK=must-not-inherit \
+DEVELOPMENT_TEAM=TEAMTEST01 \
+NOTARYTOOL_PROFILE=fixture-must-not-inherit \
+G1B_CALLER_MARKER=must-not-inherit \
+PATH="$stub_bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+TMPDIR="$fixture_root" \
 MARKLOOK_DEVID_XCODEGEN="$stub_bin/xcodegen" \
 MARKLOOK_DEVID_XCODEBUILD="$stub_bin/xcodebuild" \
 MARKLOOK_DEVID_CODESIGN="$stub_bin/codesign" \
@@ -493,7 +521,7 @@ MARKLOOK_DEVID_SPCTL="$stub_bin/spctl" \
 MARKLOOK_DEVID_VALIDATE_RELEASE_CANDIDATE="$stub_bin/validate-release-candidate" \
 MARKLOOK_DEVID_VALIDATE_ARTIFACT="$stub_bin/validate-artifact" \
 DEVELOPER_ID_APPLICATION='Developer ID Application: Fixture Signer (TEAMTEST01)' \
-  "$packager" --developer-id >"$fixture_root/package-absolute-derived.out" 2>&1
+  "$packager" --developer-id
 
 grep -Fq "xcodebuild -project MarkLook.xcodeproj -scheme MarkLook -configuration Release -derivedDataPath $resolved_absolute_derived_data" "$stub_log"
 grep -q 'OTHER_CODE_SIGN_FLAGS=--timestamp' "$stub_log"
@@ -512,5 +540,97 @@ if grep -Eq '/Users/|/home/' "$manifest" || grep -Fq "$fixture_root" "$manifest"
 fi
 grep -Eq '^Package directory: MarkLook-.+-developer-id-.+$' "$manifest"
 grep -Eq '^Package path: MarkLook-.+-developer-id-.+/MarkLook-.+-developer-id-.+\.zip$' "$manifest"
+
+# A clean scratch checkout exercises the real caller and RC consumer without signing.
+environment_ascii_checkout="$fixture_root/environment-checkout"
+environment_unicode_checkout="$environment_ascii_checkout-$(printf '\344\270\255\346\226\207')"
+environment_checkout="$environment_unicode_checkout"
+printf '%s\n' "$environment_checkout" >"$fixture_root/environment-checkout-path"
+mkdir -p "$environment_checkout/Scripts" "$environment_checkout/MarkLookApp"
+for script in package-developer-id.sh release-path-policy.sh validate-release-candidate.sh; do
+  cp "$repo_root/Scripts/$script" "$environment_checkout/Scripts/$script"
+done
+cp "$repo_root/project.yml" "$environment_checkout/project.yml"
+cp "$repo_root/MarkLookApp/Info.plist" "$environment_checkout/MarkLookApp/Info.plist"
+/usr/bin/git -C "$environment_checkout" init -q
+/usr/bin/git -C "$environment_checkout" add .
+/usr/bin/git -C "$environment_checkout" -c core.hooksPath=/dev/null \
+  -c user.name='MarkLook Tests' -c user.email='tests@example.invalid' \
+  commit -q -m 'environment fixture'
+cp -R "$environment_unicode_checkout" "$environment_ascii_checkout"
+
+run_environment_packager() {
+  local launcher="$1"
+  shift
+  env "$@" \
+    MARKLOOK_DEVID_TEST_LOG="$stub_log" \
+    MARKLOOK_DEVID_DERIVED_DATA="$fixture_root/environment-derived" \
+    MARKLOOK_DEVID_DIST_DIR="$fixture_root/environment-dist" \
+    MARKLOOK_DEVID_XCODEGEN="$stub_bin/xcodegen" \
+    MARKLOOK_DEVID_XCODEBUILD="$stub_bin/xcodebuild" \
+    MARKLOOK_DEVID_CODESIGN="$stub_bin/codesign" \
+    MARKLOOK_DEVID_DITTO=/usr/bin/ditto \
+    MARKLOOK_DEVID_SHASUM=/usr/bin/shasum \
+    MARKLOOK_DEVID_XCRUN="$stub_bin/xcrun" \
+    MARKLOOK_DEVID_SPCTL="$stub_bin/spctl" \
+    MARKLOOK_DEVID_VALIDATE_RELEASE_CANDIDATE="$launcher" \
+    MARKLOOK_DEVID_VALIDATE_ARTIFACT="$stub_bin/validate-artifact" \
+    DEVELOPER_ID_APPLICATION='Developer ID Application: Fixture Signer (TEAMTEST01)' \
+    "$environment_checkout/Scripts/package-developer-id.sh" --developer-id
+}
+
+environment_sha="$(/usr/bin/git -C "$environment_checkout" rev-parse --short HEAD)"
+environment_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$environment_checkout/MarkLookApp/Info.plist")"
+environment_output="$fixture_root/environment-dist/MarkLook-$environment_version-developer-id-$environment_sha"
+for required in HOME USER; do
+  mkdir -p "$fixture_root/environment-derived" "$environment_output"
+  printf 'keep\n' >"$fixture_root/environment-derived/sentinel"
+  printf 'keep\n' >"$environment_output/sentinel"
+  : >"$stub_log"
+  assert_status 1 "$fixture_root/environment-missing-$required.out" \
+    run_environment_packager "$stub_bin/validate-release-candidate" -u "$required" LC_ALL=en_US.UTF-8
+  grep -q 'nested RC environment requires HOME and USER' "$fixture_root/environment-missing-$required.out"
+  test ! -s "$stub_log"
+  test "$(cat "$fixture_root/environment-derived/sentinel")" = keep
+  test "$(cat "$environment_output/sentinel")" = keep
+done
+
+cat >"$stub_bin/stop-rc" <<'STUB'
+#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd -P)"
+printf 'RC stop\n' >>"$root/stub.log"
+exit 97
+STUB
+cat >"$stub_bin/launch-rc" <<'STUB'
+#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "$0")/.." && pwd -P)"
+"$root/bin/validate-release-candidate" "$@"
+exec /usr/bin/env MARKLOOK_RC_RUBY="$root/bin/stop-rc" \
+  MARKLOOK_RC_PLUGINKIT="$root/bin/pass" MARKLOOK_RC_LSREGISTER="$root/bin/pass" \
+  MARKLOOK_DEVID_TEST_LOG="$root/stub.log" \
+  "$(cat "$root/environment-checkout-path")/Scripts/validate-release-candidate.sh" "$@"
+STUB
+chmod +x "$stub_bin/stop-rc" "$stub_bin/launch-rc"
+for caller_locale in C en_US.UTF-8; do
+  if [ "$caller_locale" = C ]; then
+    environment_checkout="$environment_ascii_checkout"
+  else
+    environment_checkout="$environment_unicode_checkout"
+  fi
+  printf '%s\n' "$environment_checkout" >"$fixture_root/environment-checkout-path"
+  : >"$stub_log"
+  assert_status 97 "$fixture_root/environment-real-rc-$caller_locale.out" \
+    run_environment_packager "$stub_bin/launch-rc" LC_ALL="$caller_locale" \
+      MARKLOOK_RC_RUBY="$stub_bin/pass" MARKLOOK_UNKNOWN_TEST_HOOK=must-not-inherit
+  test "$(grep -c '^validate-release-candidate --ci$' "$stub_log")" -eq 1
+  test "$(grep -c '^RC stop$' "$stub_log")" -eq 1
+  if grep -Eq '^(xcodegen|xcodebuild|codesign|xcrun|spctl) ' "$stub_log"; then
+    echo "error: a failed nested RC gate continued into release tools" >&2
+    cat "$stub_log" >&2
+    exit 1
+  fi
+done
 
 echo "Developer ID release lane tests passed"
