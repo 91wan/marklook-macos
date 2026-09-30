@@ -53,10 +53,33 @@ final class MarkdownPreviewRenderingTests: XCTestCase {
         XCTAssertTrue(result.html.contains("Fast mode: document truncated for Quick Look responsiveness."))
     }
 
+    func testLoaderAndRendererUseBoundedFastModeWhenCachedSizeUnderstatesGrowth() throws {
+        let options = RenderOptions(fastModeByteThreshold: 64, fastModePreviewByteLimit: 32)
+        let url = try writeTempFile(named: "grown-render.md", bytes: Array("# Seed\n".utf8))
+        XCTAssertEqual(try url.resourceValues(forKeys: [.fileSizeKey]).fileSize, 7)
+        let handle = try FileHandle(forWritingTo: url)
+        defer { try? handle.close() }
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Data((String(repeating: "x", count: 80) + "\nTAIL_SHOULD_NOT_RENDER").utf8))
+        XCTAssertEqual(try url.resourceValues(forKeys: [.fileSizeKey]).fileSize, 7)
+
+        let document = try MarkdownPreviewLoader(options: options).loadDocument(from: url)
+        let result = try MarkdownPreviewRenderer(options: options).render(document)
+
+        XCTAssertLessThanOrEqual(document.source.utf8.count, 32)
+        XCTAssertEqual(result.sourceByteCount, 65)
+        XCTAssertTrue(result.usedFastMode)
+        XCTAssertFalse(result.html.contains("TAIL_SHOULD_NOT_RENDER"))
+        XCTAssertTrue(result.html.contains("Fast mode: document truncated for Quick Look responsiveness."))
+    }
+
     private func writeTempFile(named name: String, bytes: [UInt8]) throws -> URL {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        addTeardownBlock {
+            try FileManager.default.removeItem(at: directory)
+        }
         let url = directory.appendingPathComponent(name)
         try Data(bytes).write(to: url)
         return url

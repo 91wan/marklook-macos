@@ -33,21 +33,32 @@ struct MarkdownPreviewLoader {
             }
         }
 
-        let byteCount = try fileByteCount(url)
+        let readBudget = try boundedReadBudget(url)
+        let advisoryByteCount = try fileByteCount(url)
+        let data = try readBoundedFile(url, byteLimit: readBudget)
 
-        guard byteCount > 0 else {
+        guard !data.isEmpty else {
             throw LoadError.empty(url)
         }
 
-        if byteCount > options.fastModeByteThreshold {
-            let prefixData = try readPrefix(url, byteLimit: options.fastModePreviewByteLimit)
+        if data.count > options.fastModeByteThreshold {
+            let prefixData = Data(data.prefix(options.fastModePreviewByteLimit))
             let source = try decodeUTF8Prefix(prefixData, url: url)
-            return MarkdownDocument(source: source, sourceByteCount: byteCount)
+            return MarkdownDocument(source: source, sourceByteCount: max(advisoryByteCount, data.count))
         }
 
-        let data = try readFullSmallFile(url)
         let source = try decodeUTF8Full(data, url: url)
-        return MarkdownDocument(source: source, sourceByteCount: byteCount)
+        return MarkdownDocument(source: source, sourceByteCount: data.count)
+    }
+
+    private func boundedReadBudget(_ url: URL) throws -> Int {
+        let threshold = options.fastModeByteThreshold
+        let prefixLimit = options.fastModePreviewByteLimit
+        let (classificationLimit, overflow) = threshold.addingReportingOverflow(1)
+        guard threshold >= 0, prefixLimit >= 0, !overflow else {
+            throw LoadError.unreadable(url, "Preview byte limits are invalid.")
+        }
+        return max(classificationLimit, prefixLimit)
     }
 
     private func fileByteCount(_ url: URL) throws -> Int {
@@ -64,25 +75,19 @@ struct MarkdownPreviewLoader {
         }
     }
 
-    private func readFullSmallFile(_ url: URL) throws -> Data {
+    private func readBoundedFile(_ url: URL, byteLimit: Int) throws -> Data {
         do {
             let handle = try FileHandle(forReadingFrom: url)
             defer { try? handle.close() }
-            return try handle.readToEnd() ?? Data()
-        } catch {
-            throw LoadError.unreadable(url, error.localizedDescription)
-        }
-    }
-
-    private func readPrefix(_ url: URL, byteLimit: Int) throws -> Data {
-        guard byteLimit > 0 else {
-            return Data()
-        }
-
-        do {
-            let handle = try FileHandle(forReadingFrom: url)
-            defer { try? handle.close() }
-            return try handle.read(upToCount: byteLimit) ?? Data()
+            var data = Data()
+            while data.count < byteLimit {
+                let chunkLimit = min(65_536, byteLimit - data.count)
+                guard let chunk = try handle.read(upToCount: chunkLimit), !chunk.isEmpty else {
+                    break
+                }
+                data.append(chunk)
+            }
+            return data
         } catch {
             throw LoadError.unreadable(url, error.localizedDescription)
         }
