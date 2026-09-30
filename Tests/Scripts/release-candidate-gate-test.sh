@@ -316,7 +316,11 @@ grep -q '^Package path:' "$fixture_root/ci.out"
 grep -q '^Checksum:' "$fixture_root/ci.out"
 grep -q 'MarkLook-0.1.1-debug-' "$fixture_root/ci.out"
 grep -Fq "pass -u $resolved_fixture/DerivedData/Build/Products/Debug/MarkLook.app" "$stub_log"
-grep -Fq "pass -u $resolved_fixture/dist/MarkLook-0.1.1-debug-$(git -C "$repo_root" rev-parse --short HEAD)/MarkLook.app" "$stub_log"
+if grep -Fq "$resolved_fixture/dist/MarkLook-0.1.1-debug-$(git -C "$repo_root" rev-parse --short HEAD)/MarkLook.app" "$stub_log"; then
+  echo "error: RC attempted to clean a packaged App it does not own" >&2
+  cat "$stub_log" >&2
+  exit 1
+fi
 test -f "$fixture_root/reports/project.yml"
 test -f "$fixture_root/reports/renderer.html"
 
