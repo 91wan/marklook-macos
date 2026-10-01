@@ -44,11 +44,98 @@ cleanup() {
 }
 trap cleanup EXIT
 
+inventory="$list_tmp/inventory"
+tracked_paths="$list_tmp/tracked-paths"
+if [[ "$mode" == "archive" ]]; then
+  git -C "$repo_root" ls-tree -rz --full-tree HEAD >"$inventory"
+else
+  git -C "$repo_root" ls-files --stage -z >"$inventory"
+fi
+
+# Admit the entire tracked inventory before archive extraction or content reads.
+LC_ALL=en_US.UTF-8 /usr/bin/ruby - "$mode" "$inventory" "$tracked_paths" <<'RUBY'
+mode, inventory, output = ARGV
+begin
+  raw = File.binread(inventory)
+  raise "unterminated inventory" unless raw.empty? || raw.end_with?("\0")
+  seen = {}
+  records = raw.empty? ? [] : raw.split("\0", -1)[0...-1]
+  paths = records.map do |record|
+    header, path = record.split("\t", 2)
+    fields = header.split(" ")
+    raise "malformed inventory record" unless path && fields.length == 3 && fields[1..2].all? { |s| !s.empty? }
+    file_mode = fields[0]
+    object_id = mode == "archive" ? fields[2] : fields[1]
+    raise "invalid object ID" unless object_id.match?(/\A(?:[0-9a-f]{40}|[0-9a-f]{64})\z/)
+    raise "unmerged tracked path: #{path.inspect}" if mode == "current" && fields[2] != "0"
+    unless %w[100644 100755].include?(file_mode) && (mode != "archive" || fields[1] == "blob")
+      raise "unsupported tracked mode #{file_mode}: #{path.inspect}"
+    end
+    components = path.split("/", -1)
+    if components.any? { |part| part.empty? || part == "." || part == ".." } || seen[path]
+      raise "invalid or duplicate tracked path: #{path.inspect}"
+    end
+    seen[path] = true
+    path
+  end
+  File.binwrite(output, paths.map { |path| path + "\0" }.join)
+rescue StandardError => error
+  warn "privacy inventory error: #{error.message}"
+  exit 1
+end
+RUBY
+
 if [[ "$mode" == "archive" ]]; then
   tmpdir="$(mktemp -d)"
   git -C "$repo_root" archive HEAD | tar -x -C "$tmpdir"
   scan_root="$tmpdir"
 fi
+
+text_files="$list_tmp/text-files"
+LC_ALL=en_US.UTF-8 /usr/bin/ruby - "$scan_root" "$tracked_paths" "$list_tmp" "$text_files" <<'RUBY'
+require "open3"
+root, inventory, staging, output = ARGV
+begin
+  records = []
+  File.binread(inventory).split("\0").each_with_index do |path, index|
+    file = root
+    parts = path.split("/")
+    parts.each_with_index do |part, position|
+      file = File.join(file, part)
+      stat = File.lstat(file)
+      raise "symlink traversal: #{path.inspect}" if stat.symlink?
+      expected_type = position == parts.length - 1 ? stat.file? : stat.directory?
+      raise "non-regular tracked path: #{path.inspect}" unless expected_type
+    end
+    if path.match?(%r{\ADocs/evidence/.*\.(png|jpg|jpeg)\z}im)
+      raise "runtime evidence image is not allowed in Docs/evidence: #{path.inspect}"
+    end
+    bytes = File.binread(file)
+    if ["\xFF\xFE", "\xFE\xFF", "\x00\x00\xFE\xFF"].any? { |bom| bytes.start_with?(bom.b) }
+      raise "unsupported UTF-16/32 BOM: #{path.inspect}"
+    end
+    appicon = path.match?(%r{\AMarkLookApp/Assets\.xcassets/AppIcon\.appiconset/icon_(16x16|32x32|128x128|256x256|512x512)(@2x)?\.png\z})
+    if appicon && bytes.start_with?("\x89PNG\r\n\x1A\n".b)
+      mime, _, status = Open3.capture3("/usr/bin/file", "-b", "--mime-type", "-", stdin_data: bytes)
+      raise "PNG classification failed: #{path.inspect}" unless status.success?
+      if mime.strip == "image/png"
+        warn "privacy binary exception: approved AppIcon PNG: #{path.inspect}"
+        next
+      end
+    end
+    unless bytes.dup.force_encoding(Encoding::UTF_8).valid_encoding? && !bytes.include?("\0")
+      raise "unsupported binary or invalid UTF-8: #{path.inspect}"
+    end
+    copy = File.join(staging, "text-#{index}")
+    File.binwrite(copy, bytes)
+    records << path << copy
+  end
+  File.binwrite(output, records.map { |record| record + "\0" }.join)
+rescue StandardError => error
+  warn "privacy content error: #{error.message}"
+  exit 1
+end
+RUBY
 
 failures=0
 
@@ -59,25 +146,32 @@ report_violation() {
   failures=1
 }
 
-relative_path() {
-  local path="$1"
-  printf '%s\n' "${path#"$scan_root"/}"
-}
-
 scan_evidence_images() {
-  local evidence_dir="$scan_root/Docs/evidence"
+  local evidence_dir="$repo_root/Docs/evidence"
   local list_file="$list_tmp/evidence-images"
   if [[ ! -d "$evidence_dir" ]]; then
-    return
+    return 0
   fi
-
   find "$evidence_dir" -type f \
     \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) \
     -print0 >"$list_file"
-
   while IFS= read -r -d '' path; do
-    report_violation "runtime evidence image is not allowed in Docs/evidence" "$(relative_path "$path")"
+    report_violation "runtime evidence image is not allowed in Docs/evidence" "${path#"$repo_root"/}"
   done <"$list_file"
+}
+
+# A grep no-match is normal; errors must remain visible to the final verdict.
+privacy_grep() {
+  local location="$1" status=0
+  shift
+  LC_ALL=C grep "$@" >"$list_tmp/grep-matches" || status=$?
+  case "$status" in
+    0|1) return "$status" ;;
+    *)
+      report_violation "privacy scan error (grep exit $status)" "$location"
+      return 2
+      ;;
+  esac
 }
 
 is_allowed_teamidentifier_line() {
@@ -116,9 +210,9 @@ collect_local_team_identifiers() {
     return
   fi
 
-  grep -Eo '\([A-Z0-9]{10}\)' "$identities_file" |
-    tr -d '()' |
-    sort -u >"$local_team_ids_file" || true
+  if privacy_grep 'signing identity token extraction' -Eo '\([A-Z0-9]{10}\)' "$identities_file"; then
+    tr -d '()' <"$list_tmp/grep-matches" | sort -u >"$local_team_ids_file"
+  fi
 }
 
 scan_match() {
@@ -129,9 +223,10 @@ scan_match() {
   local allow_function="${5:-}"
 
   local matches
-  matches="$(grep -nE "$pattern" "$file" || true)"
-  if [[ -z "$matches" ]]; then
-    return
+  if privacy_grep "$rel" -nE "$pattern" "$file"; then
+    matches="$(<"$list_tmp/grep-matches")"
+  else
+    return 0
   fi
 
   local match line_no line
@@ -156,7 +251,11 @@ scan_local_team_identifiers() {
 
   while IFS= read -r team_id; do
     [[ -z "$team_id" ]] && continue
-    matches="$(grep -nF "$team_id" "$file" || true)"
+    if privacy_grep "$rel" -nF "$team_id" "$file"; then
+      matches="$(<"$list_tmp/grep-matches")"
+    else
+      continue
+    fi
     while IFS= read -r match; do
       [[ -z "$match" ]] && continue
       line_no="${match%%:*}"
@@ -175,18 +274,29 @@ scan_contextual_teamidentifier_tokens() {
   local tokens
   local token
 
-  if ! grep -Eiq 'TeamIdentifier|team[_ -]?id|local[_ -]?team' "$file"; then
-    return
+  if ! privacy_grep "$rel" -Ei 'TeamIdentifier|team[_ -]?id|local[_ -]?team' "$file"; then
+    return 0
   fi
 
-  matches="$(grep -nE '(^|[^A-Z0-9])[A-Z0-9]{10}([^A-Z0-9]|$)' "$file" || true)"
+  if privacy_grep "$rel" -nE '(^|[^A-Z0-9])[A-Z0-9]{10}([^A-Z0-9]|$)' "$file"; then
+    matches="$(<"$list_tmp/grep-matches")"
+  else
+    return 0
+  fi
   while IFS= read -r match; do
     [[ -z "$match" ]] && continue
     line_no="${match%%:*}"
     line="${match#*:}"
-    tokens="$(printf '%s\n' "$line" |
-      grep -Eo '(^|[^A-Z0-9])[A-Z0-9]{10}([^A-Z0-9]|$)' |
-      grep -Eo '[A-Z0-9]{10}' || true)"
+    if privacy_grep "$rel:$line_no" -Eo '(^|[^A-Z0-9])[A-Z0-9]{10}([^A-Z0-9]|$)' <<<"$line"; then
+      tokens="$(<"$list_tmp/grep-matches")"
+    else
+      continue
+    fi
+    if privacy_grep "$rel:$line_no" -Eo '[A-Z0-9]{10}' <<<"$tokens"; then
+      tokens="$(<"$list_tmp/grep-matches")"
+    else
+      continue
+    fi
     while IFS= read -r token; do
       [[ -z "$token" ]] && continue
       if [[ ! "$token" =~ [A-Z] ]] || [[ ! "$token" =~ [0-9] ]]; then
@@ -217,39 +327,14 @@ scan_text_file() {
   scan_contextual_teamidentifier_tokens "$rel" "$file"
 }
 
-scan_current_tree_text() {
-  local rel file
-  local list_file="$list_tmp/current-text-files"
-  git -C "$repo_root" ls-files -z -- \
-    '*.md' '*.txt' '*.sh' '*.swift' '*.yml' '*.yaml' '*.plist' >"$list_file"
-
-  while IFS= read -r -d '' rel; do
-    file="$repo_root/$rel"
-    [[ -f "$file" ]] || continue
-    scan_text_file "$rel" "$file"
-  done <"$list_file"
-}
-
-scan_archive_text() {
-  local path rel
-  local list_file="$list_tmp/archive-text-files"
-  find "$scan_root" -type f \
-    \( -iname '*.md' -o -iname '*.txt' -o -iname '*.sh' -o -iname '*.swift' -o -iname '*.yml' -o -iname '*.yaml' -o -iname '*.plist' \) \
-    -print0 >"$list_file"
-
-  while IFS= read -r -d '' path; do
-    rel="$(relative_path "$path")"
-    scan_text_file "$rel" "$path"
-  done <"$list_file"
-}
-
 collect_local_team_identifiers
-scan_evidence_images
-if [[ "$mode" == "archive" ]]; then
-  scan_archive_text
-else
-  scan_current_tree_text
+if [[ "$mode" == "current" ]]; then
+  scan_evidence_images
 fi
+while IFS= read -r -d '' rel; do
+  IFS= read -r -d '' file
+  scan_text_file "$rel" "$file"
+done <"$text_files"
 
 if [[ "$failures" -ne 0 ]]; then
   exit 1
