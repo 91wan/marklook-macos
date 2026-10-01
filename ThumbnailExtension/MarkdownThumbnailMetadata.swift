@@ -115,17 +115,11 @@ struct MarkdownThumbnailMetadata: Equatable, Sendable {
     }
 
     private static func headingText(in line: String) -> String? {
-        let headingPrefix: String
-        if line.hasPrefix("# ") {
-            headingPrefix = "# "
-        } else if line.hasPrefix("## ") {
-            headingPrefix = "## "
-        } else {
+        guard let heading = MarkdownATX.parse(line), heading.level <= 2 else {
             return nil
         }
 
-        let rawHeading = String(line.dropFirst(headingPrefix.count))
-            .trimmingCharacters(in: .whitespaces)
+        let rawHeading = heading.title
             .trimmingCharacters(in: CharacterSet(charactersIn: "#"))
             .trimmingCharacters(in: .whitespaces)
 

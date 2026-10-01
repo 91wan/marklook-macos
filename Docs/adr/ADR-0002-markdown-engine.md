@@ -35,6 +35,14 @@ This behavior-neutral extraction preserves `.whitespaces` trimming, backtick/til
 
 A data-only characterization table under MarkdownCoreTests is compiled only in Core and Thumbnail tests. Both real consumers use its fixed inputs and expected outputs to preserve the existing contract.
 
+### Shared ATX syntax
+
+Share ATX heading recognition in one Foundation-only internal source under MarkdownCore, using normal SwiftPM discovery and explicit compilation of the same file in Thumbnail and its tests. Thumbnail must not import or link the full MarkdownCore engine; no target, product, package, module, or dependency is added.
+
+Recognition preserves `.whitespaces` trimming, levels 1 through 6, a literal ASCII space after the hash run, and a nonempty whitespace-trimmed title without further projection. Renderer retains its three recognition sites, Setext precedence, inline escaping/rendering, and level 1 through 3 TOC. Thumbnail retains H1/H2 eligibility, hash trimming, whitespace collapse, first-eligible scan order, and continuing past projected-empty titles. Fence state, front matter, newline/BOM handling, and IO/read bounds stay with their existing consumers.
+
+A test-only, data-only table declares identical source inputs but distinct fixed Renderer HTML/TOC and Thumbnail heading expectations. Characterization runs against unchanged production before extraction; this is not a heading feature change.
+
 GFM support level for v0.1:
 
 - headings `#` / `##` / `###`

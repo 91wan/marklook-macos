@@ -12,6 +12,21 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertTrue(result.html.contains("<h3 id=\"three\">Three</h3>"))
     }
 
+    func testSharedATXCharacterizationCases() throws {
+        for fixture in MarkdownATXCases.all {
+            let result = try renderer.render(MarkdownDocument(source: fixture.source))
+
+            XCTAssertTrue(result.html.contains(
+                "<main class=\"markdown-body\">\n\(fixture.expectedRendererBodyHTML)\n</main>"
+            ), fixture.name)
+            let expectedTOC = fixture.expectedRendererTOC.map {
+                TableOfContents.Item(title: $0.title, level: $0.level, id: $0.id)
+            }
+            XCTAssertEqual(result.tableOfContents, expectedTOC, fixture.name)
+            XCTAssertFalse(result.usedFastMode, fixture.name)
+        }
+    }
+
     func testLeadingUTF8ByteOrderMarkDoesNotHideFirstHeading() throws {
         let result = try renderer.render(MarkdownDocument(source: "\u{FEFF}# Title"))
 
