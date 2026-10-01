@@ -5,20 +5,32 @@ struct MarkdownPreviewLoader {
     private let options: RenderOptions
 
     enum LoadError: LocalizedError, Equatable {
-        case unreadable(URL, String)
+        enum UnreadableReason: Equatable {
+            case invalidByteLimits
+            case fileSizeUnavailable
+            case readFailed
+        }
+
+        case unreadable(URL, UnreadableReason)
         case notUTF8(URL)
         case empty(URL)
 
-        var errorDescription: String? {
+        var displayMessage: String {
             switch self {
-            case let .unreadable(url, reason):
-                return "Could not read \(url.lastPathComponent): \(reason)"
-            case let .notUTF8(url):
-                return "\(url.lastPathComponent) is not encoded as UTF-8."
-            case let .empty(url):
-                return "\(url.lastPathComponent) is empty."
+            case .unreadable(_, .invalidByteLimits):
+                return "Preview byte limits are invalid."
+            case .unreadable(_, .fileSizeUnavailable):
+                return "File size is unavailable."
+            case .unreadable(_, .readFailed):
+                return "Could not read this file."
+            case .notUTF8:
+                return "This file is not encoded as UTF-8."
+            case .empty:
+                return "This file is empty."
             }
         }
+
+        var errorDescription: String? { displayMessage }
     }
 
     init(options: RenderOptions = PreviewRenderDefaults.options) {
@@ -56,7 +68,7 @@ struct MarkdownPreviewLoader {
         let prefixLimit = options.fastModePreviewByteLimit
         let (classificationLimit, overflow) = threshold.addingReportingOverflow(1)
         guard threshold >= 0, prefixLimit >= 0, !overflow else {
-            throw LoadError.unreadable(url, "Preview byte limits are invalid.")
+            throw LoadError.unreadable(url, .invalidByteLimits)
         }
         return max(classificationLimit, prefixLimit)
     }
@@ -65,13 +77,13 @@ struct MarkdownPreviewLoader {
         do {
             let values = try url.resourceValues(forKeys: [.fileSizeKey])
             guard let byteCount = values.fileSize, byteCount >= 0 else {
-                throw LoadError.unreadable(url, "File size is unavailable.")
+                throw LoadError.unreadable(url, .fileSizeUnavailable)
             }
             return byteCount
         } catch let error as LoadError {
             throw error
         } catch {
-            throw LoadError.unreadable(url, error.localizedDescription)
+            throw LoadError.unreadable(url, .readFailed)
         }
     }
 
@@ -89,7 +101,7 @@ struct MarkdownPreviewLoader {
             }
             return data
         } catch {
-            throw LoadError.unreadable(url, error.localizedDescription)
+            throw LoadError.unreadable(url, .readFailed)
         }
     }
 

@@ -123,6 +123,9 @@ final class MarkdownPreviewLoaderTests: XCTestCase {
                 return XCTFail("Expected unreadable, got \(error)")
             }
             XCTAssertEqual(failedURL, url)
+            XCTAssertEqual(error.localizedDescription, "Could not read this file.")
+            XCTAssertFalse(error.localizedDescription.contains(url.lastPathComponent))
+            XCTAssertFalse(error.localizedDescription.contains(url.path))
         }
     }
 
@@ -134,8 +137,10 @@ final class MarkdownPreviewLoaderTests: XCTestCase {
             XCTAssertThrowsError(try MarkdownPreviewLoader(options: options).loadDocument(from: url)) { error in
                 XCTAssertEqual(
                     error as? MarkdownPreviewLoader.LoadError,
-                    .unreadable(url, "Preview byte limits are invalid.")
+                    .unreadable(url, .invalidByteLimits)
                 )
+                XCTAssertEqual(error.localizedDescription, "Preview byte limits are invalid.")
+                XCTAssertFalse(error.localizedDescription.contains(url.lastPathComponent))
             }
         }
     }
@@ -236,6 +241,8 @@ final class MarkdownPreviewLoaderTests: XCTestCase {
                 return XCTFail("Expected notUTF8, got \(error)")
             }
             XCTAssertEqual(url.lastPathComponent, "invalid.md")
+            XCTAssertEqual(error.localizedDescription, "This file is not encoded as UTF-8.")
+            XCTAssertFalse(error.localizedDescription.contains(url.lastPathComponent))
         }
     }
 
@@ -247,6 +254,8 @@ final class MarkdownPreviewLoaderTests: XCTestCase {
                 return XCTFail("Expected empty, got \(error)")
             }
             XCTAssertEqual(url.lastPathComponent, "empty.md")
+            XCTAssertEqual(error.localizedDescription, "This file is empty.")
+            XCTAssertFalse(error.localizedDescription.contains(url.lastPathComponent))
         }
     }
 

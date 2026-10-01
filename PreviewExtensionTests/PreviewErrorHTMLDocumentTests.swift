@@ -105,4 +105,61 @@ final class PreviewErrorHTMLDocumentTests: XCTestCase {
         XCTAssertFalse(html.contains(privatePath))
         XCTAssertTrue(html.contains("Could not read &lt;redacted-file&gt;: permission denied"))
     }
+
+    func testErrorHTMLDocumentRedactsCurlyQuotedBarePaths() {
+        let privatePath = "/" + ["Users", "example", "Documents", "private.md"].joined(separator: "/")
+        for (opening, closing) in [("\u{2018}", "\u{2019}"), ("\u{201C}", "\u{201D}")] {
+            let html = PreviewErrorHTMLDocument.html(
+                title: "\(opening)\(privatePath)\(closing)",
+                message: "Could not read \(opening)\(privatePath)\(closing): detail"
+            )
+
+            XCTAssertFalse(html.contains(privatePath))
+            XCTAssertTrue(html.contains("<h1>\(opening)private.md\(closing)</h1>"))
+            XCTAssertTrue(html.contains("Could not read \(opening)private.md\(closing): detail"))
+        }
+    }
+
+    func testErrorHTMLDocumentRedactsCurlyQuotedFileURLsWithoutConsumingFollowingText() {
+        let privatePath = "/" + ["Users", "example", "Documents", "private.md"].joined(separator: "/")
+        let fileURL = URL(fileURLWithPath: privatePath).absoluteString
+        for (opening, closing) in [("\u{2018}", "\u{2019}"), ("\u{201C}", "\u{201D}")] {
+            let html = PreviewErrorHTMLDocument.html(
+                title: "\(opening)\(fileURL)\(closing):retry/status",
+                message: "Could not read \(opening)\(fileURL)\(closing):retry/status"
+            )
+
+            XCTAssertFalse(html.contains(fileURL))
+            XCTAssertFalse(html.contains(privatePath))
+            XCTAssertTrue(html.contains("<h1>\(opening)private.md\(closing):retry/status</h1>"))
+            XCTAssertTrue(html.contains("Could not read \(opening)private.md\(closing):retry/status"))
+        }
+    }
+
+    func testErrorHTMLDocumentRedactsBarePathsAfterEqualsOrColon() {
+        let privatePath = "/" + ["Users", "example", "Documents", "private.md"].joined(separator: "/")
+        for delimiter in ["=", ":"] {
+            let html = PreviewErrorHTMLDocument.html(
+                title: "path\(delimiter)\(privatePath)",
+                message: "Could not read path\(delimiter)\(privatePath)"
+            )
+
+            XCTAssertFalse(html.contains(privatePath))
+            XCTAssertTrue(html.contains("<h1>path\(delimiter)private.md</h1>"))
+            XCTAssertTrue(html.contains("Could not read path\(delimiter)private.md"))
+        }
+    }
+
+    func testErrorHTMLDocumentKeepsEqualsAndColonsInsideFileURL() {
+        let privatePath = "/" + ["Users", "example", "Documents", "private=notes:archive.md"].joined(separator: "/")
+        let fileURL = "file://host:8443\(privatePath)"
+        let html = PreviewErrorHTMLDocument.html(
+            title: "Preview unavailable",
+            message: "Could not read \(fileURL): permission denied"
+        )
+
+        XCTAssertFalse(html.contains(fileURL))
+        XCTAssertFalse(html.contains(privatePath))
+        XCTAssertTrue(html.contains("Could not read private=notes:archive.md: permission denied"))
+    }
 }
