@@ -233,7 +233,7 @@ private struct BlockRenderer {
                 continue
             }
 
-            if let heading = parseHeading(lines[index]) {
+            if let heading = MarkdownATX.parse(lines[index]) {
                 blocks.append(renderHeading(heading))
                 index += 1
                 continue
@@ -588,34 +588,12 @@ private struct BlockRenderer {
 
     private func startsBlock(_ line: String, lines: [String], index: Int) -> Bool {
         isFenceStart(line)
-            || parseHeading(line) != nil
+            || MarkdownATX.parse(line) != nil
             || isHorizontalRule(line)
             || isBlockquote(line)
             || parseUnorderedListItem(line) != nil
             || parseOrderedListItem(line) != nil
             || (index + 1 < lines.count && parseTableRow(line) != nil && parseTableRow(lines[index + 1]).map(isTableSeparator) == true)
-    }
-
-    private func parseHeading(_ line: String) -> (level: Int, title: String)? {
-        let trimmed = line.trimmingCharacters(in: .whitespaces)
-        var level = 0
-        var cursor = trimmed.startIndex
-
-        while cursor < trimmed.endIndex, trimmed[cursor] == "#", level < 6 {
-            level += 1
-            cursor = trimmed.index(after: cursor)
-        }
-
-        guard level > 0, cursor < trimmed.endIndex, trimmed[cursor] == " " else {
-            return nil
-        }
-
-        let title = String(trimmed[trimmed.index(after: cursor)...]).trimmingCharacters(in: .whitespaces)
-        guard !title.isEmpty else {
-            return nil
-        }
-
-        return (level, title)
     }
 
     private func parseSetextHeading(
@@ -629,7 +607,7 @@ private struct BlockRenderer {
 
         let title = lines[startIndex].trimmingCharacters(in: .whitespaces)
         guard !title.isEmpty,
-              parseHeading(title) == nil,
+              MarkdownATX.parse(title) == nil,
               !isFenceStart(title),
               !isHorizontalRule(title),
               !isBlockquote(title),

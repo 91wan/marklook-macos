@@ -7,6 +7,15 @@ final class MarkdownThumbnailMetadataTests: XCTestCase {
         XCTAssertEqual(metadata.heading, "Project Plan")
     }
 
+    func testSharedATXCharacterizationCases() {
+        for fixture in MarkdownATXCases.all {
+            let metadata = parse(fixture.source)
+
+            XCTAssertEqual(metadata.heading, fixture.expectedThumbnailHeading, fixture.name)
+            XCTAssertTrue(metadata.isUTF8, fixture.name)
+        }
+    }
+
     func testExtractsFirstHeadingAfterUTF8ByteOrderMark() {
         let metadata = parse("\u{FEFF}# Windows Export")
 
