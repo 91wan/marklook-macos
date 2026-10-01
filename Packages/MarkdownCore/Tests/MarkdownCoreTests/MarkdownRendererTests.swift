@@ -143,6 +143,28 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertFalse(result.html.contains("<h1"))
     }
 
+    func testSharedFenceCharacterizationCases() throws {
+        for fixture in MarkdownFenceCases.all {
+            let result = try renderer.render(MarkdownDocument(source: fixture.source))
+
+            if let codeHTML = fixture.expectedCodeHTML {
+                XCTAssertTrue(result.html.contains(codeHTML), fixture.name)
+            } else {
+                XCTAssertFalse(result.html.contains("<pre><code"), fixture.name)
+            }
+            let expectedTOC = fixture.expectedHeading.map {
+                [TableOfContents.Item(title: $0, level: 2, id: "visible")]
+            } ?? []
+            XCTAssertEqual(result.tableOfContents, expectedTOC, fixture.name)
+            if fixture.expectedHeading != nil {
+                XCTAssertTrue(result.html.contains("<h2 id=\"visible\">Visible</h2>"), fixture.name)
+            }
+            XCTAssertFalse(result.html.contains("<h2 id=\"hidden\">"), fixture.name)
+            XCTAssertFalse(result.html.localizedCaseInsensitiveContains("<script"), fixture.name)
+            XCTAssertFalse(result.usedFastMode, fixture.name)
+        }
+    }
+
     func testInlineCodeRenders() throws {
         let result = try renderer.render(MarkdownDocument(source: "Use `swift test` now."))
 

@@ -119,12 +119,6 @@ public struct MarkdownRenderer: MarkdownRendering, Sendable {
 }
 
 private struct BlockRenderer {
-    private struct FenceDelimiter {
-        let marker: Character
-        let count: Int
-        let info: String
-    }
-
     private struct ListItem {
         let indent: Int
         let ordered: Bool
@@ -283,7 +277,7 @@ private struct BlockRenderer {
     }
 
     private mutating func renderFencedCode(lines: [String], startIndex: Int) -> (html: String, nextIndex: Int) {
-        guard let opening = fenceDelimiter(in: lines[startIndex]) else {
+        guard let opening = MarkdownFence.parse(lines[startIndex]) else {
             return ("", startIndex + 1)
         }
 
@@ -291,7 +285,7 @@ private struct BlockRenderer {
         var index = startIndex + 1
 
         while index < lines.count {
-            if isClosingFence(lines[index], for: opening) {
+            if let closing = MarkdownFence.parse(lines[index]), closing.closes(opening) {
                 index += 1
                 break
             }
@@ -658,32 +652,7 @@ private struct BlockRenderer {
     }
 
     private func isFenceStart(_ line: String) -> Bool {
-        fenceDelimiter(in: line) != nil
-    }
-
-    private func fenceDelimiter(in line: String) -> FenceDelimiter? {
-        let trimmed = line.trimmingCharacters(in: .whitespaces)
-        guard let marker = trimmed.first, marker == "`" || marker == "~" else {
-            return nil
-        }
-
-        let count = trimmed.prefix { $0 == marker }.count
-        guard count >= 3 else {
-            return nil
-        }
-
-        let info = String(trimmed.dropFirst(count)).trimmingCharacters(in: .whitespaces)
-        return FenceDelimiter(marker: marker, count: count, info: info)
-    }
-
-    private func isClosingFence(_ line: String, for opening: FenceDelimiter) -> Bool {
-        guard let closing = fenceDelimiter(in: line) else {
-            return false
-        }
-
-        return closing.marker == opening.marker
-            && closing.count >= opening.count
-            && closing.info.isEmpty
+        MarkdownFence.parse(line) != nil
     }
 
     private func isHorizontalRule(_ line: String) -> Bool {

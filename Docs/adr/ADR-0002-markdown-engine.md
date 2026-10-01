@@ -27,6 +27,14 @@ Xcode version tested: local Xcode 17.x and GitHub Actions Xcode 16.4 through Swi
 
 App extension compatibility: MarkdownCore must import Foundation only and must not import WebKit or AppKit.
 
+### Shared fence syntax
+
+Share fence delimiter recognition in one Foundation-only internal `MarkdownFence.swift` source under MarkdownCore. SwiftPM discovers it normally; XcodeGen explicitly compiles that same file in the Thumbnail extension and its tests, without importing or linking the full MarkdownCore engine there. No new target, product, package, or module is introduced.
+
+This behavior-neutral extraction preserves `.whitespaces` trimming, backtick/tilde runs of at least three characters, trimmed info strings, and closing fences with the same marker, at least the opening length, and empty info. The existing permissive backtick info-string behavior remains unchanged. Each consumer retains fence state, newline/BOM handling, heading/front-matter priorities, escaping/sanitization, and IO/read bounds.
+
+A data-only characterization table under MarkdownCoreTests is compiled only in Core and Thumbnail tests. Both real consumers use its fixed inputs and expected outputs to preserve the existing contract.
+
 GFM support level for v0.1:
 
 - headings `#` / `##` / `###`
