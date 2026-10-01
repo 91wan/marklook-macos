@@ -32,8 +32,10 @@ struct MarkdownPreviewPipeline {
             let rendered = try renderer.render(document)
             onEvent(.renderedHTML)
             return .htmlDocument(rendered.html)
+        } catch let error as MarkdownPreviewLoader.LoadError {
+            return .error(title: "Preview unavailable", message: error.displayMessage)
         } catch {
-            return .error(title: "Preview unavailable", message: error.localizedDescription)
+            return .error(title: "Preview unavailable", message: "Could not create this preview.")
         }
     }
 }

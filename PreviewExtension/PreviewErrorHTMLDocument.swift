@@ -92,7 +92,8 @@ enum PreviewErrorHTMLDocument {
 
             if slash > text.startIndex {
                 let previous = text[text.index(before: slash)]
-                if !previous.isWhitespace && previous != "\"" && previous != "'" && previous != "(" {
+                if !previous.isWhitespace && !isQuoteDelimiter(previous)
+                    && previous != "(" && previous != "=" && previous != ":" {
                     output.append("/")
                     cursor = text.index(after: slash)
                     continue
@@ -102,6 +103,7 @@ enum PreviewErrorHTMLDocument {
             var end = slash
             while end < text.endIndex,
                   !text[end].isWhitespace,
+                  !isQuoteDelimiter(text[end]),
                   text[end] != ":" {
                 end = text.index(after: end)
             }
@@ -130,8 +132,7 @@ enum PreviewErrorHTMLDocument {
             while end < text.endIndex {
                 let character = text[end]
                 if character.isWhitespace
-                    || character == "\""
-                    || character == "'"
+                    || isQuoteDelimiter(character)
                     || character == ")"
                     || character == ">" {
                     break
@@ -166,6 +167,15 @@ enum PreviewErrorHTMLDocument {
         }
 
         return (String(token[..<urlEnd]), String(token[urlEnd...]))
+    }
+
+    private static func isQuoteDelimiter(_ character: Character) -> Bool {
+        switch character {
+        case "\"", "'", "\u{2018}", "\u{2019}", "\u{201C}", "\u{201D}":
+            true
+        default:
+            false
+        }
     }
 
     private static func isTerminalURLPunctuation(_ character: Character) -> Bool {
