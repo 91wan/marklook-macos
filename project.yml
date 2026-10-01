@@ -174,6 +174,7 @@ targets:
           - Info.plist
           - ThumbnailExtension.entitlements
       - path: Shared
+      - path: Packages/MarkdownCore/Sources/MarkdownCore/MarkdownFence.swift
     info:
       path: ThumbnailExtension/Info.plist
       properties:
@@ -244,6 +245,8 @@ targets:
           - Info.plist
           - ThumbnailExtension.entitlements
       - path: Shared
+      - path: Packages/MarkdownCore/Sources/MarkdownCore/MarkdownFence.swift
+      - path: Packages/MarkdownCore/Tests/MarkdownCoreTests/MarkdownFenceCases.swift
     info:
       path: ThumbnailExtensionTests/Info.plist
     settings:

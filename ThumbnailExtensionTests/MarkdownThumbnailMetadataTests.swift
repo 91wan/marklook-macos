@@ -72,6 +72,15 @@ final class MarkdownThumbnailMetadataTests: XCTestCase {
         XCTAssertEqual(metadata.heading, "Real Heading")
     }
 
+    func testSharedFenceCharacterizationCases() {
+        for fixture in MarkdownFenceCases.all {
+            let metadata = parse(fixture.source)
+
+            XCTAssertEqual(metadata.heading, fixture.expectedHeading, fixture.name)
+            XCTAssertTrue(metadata.isUTF8, fixture.name)
+        }
+    }
+
     func testTrimsAndCollapsesHeadingWhitespace() {
         let metadata = parse("#   A    spaced\t heading   ")
 
