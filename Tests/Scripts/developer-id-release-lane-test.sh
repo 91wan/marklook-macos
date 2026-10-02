@@ -708,6 +708,7 @@ fi
 # Keep the packaging positive independent of the construction worktree's dirtiness.
 mkdir -p "$temporary_checkout/MarkLookApp"
 cp "$repo_root/MarkLookApp/Info.plist" "$temporary_checkout/MarkLookApp/Info.plist"
+printf '.build/\ndist/\n' >"$temporary_checkout/.gitignore"
 /usr/bin/git -C "$temporary_checkout" init -q
 /usr/bin/git -C "$temporary_checkout" add .
 /usr/bin/git -C "$temporary_checkout" -c core.hooksPath=/dev/null \
@@ -855,5 +856,155 @@ for caller_locale in C en_US.UTF-8; do
     exit 1
   fi
 done
+
+output_guard="$fixture_root/output-admission"
+mutation_log="$fixture_root/output-mutations.log"
+output_packager="$temporary_checkout/Scripts/package-developer-id.sh"
+output_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$temporary_checkout/MarkLookApp/Info.plist")"
+output_sha="$(/usr/bin/git -C "$temporary_checkout" rev-parse --short HEAD)"
+output_stem="MarkLook-$output_version-developer-id-$output_sha"
+mkdir -p "$output_guard/derived" "$output_guard/dist" "$output_guard/escaped" \
+  "$output_guard/linked-dist" "$output_guard/inside-dist/target" \
+  "$temporary_checkout/dist/$output_stem"
+sentinels=("$output_guard/derived/sentinel" "$output_guard/dist/sentinel" \
+  "$output_guard/escaped/sentinel" "$temporary_checkout/dist/$output_stem/sentinel")
+for sentinel in "${sentinels[@]}"; do printf 'keep\n' >"$sentinel"; done
+ln -s "$HOME" "$output_guard/missing-parent-link"
+ln -s "$output_guard/escaped" "$output_guard/linked-dist/$output_stem"
+ln -s "$output_guard/inside-dist/target" "$output_guard/inside-dist/$output_stem"
+
+# These nonmutating spies exist only in denied packager subprocesses. Setup and
+# cleanup use the ordinary commands, and real positives use owned fixture paths.
+cat >"$fixture_root/output-spy.bash" <<'SPY'
+rm() {
+  if [ "${BASH_SOURCE[1]:-}" = "$MARKLOOK_DEVID_TEST_PACKAGER" ]; then
+    printf 'rm %s\n' "$*" >>"$MARKLOOK_DEVID_TEST_MUTATIONS"
+    return 97
+  fi
+  command rm "$@"
+}
+mkdir() {
+  if [ "${BASH_SOURCE[1]:-}" = "$MARKLOOK_DEVID_TEST_PACKAGER" ]; then
+    printf 'mkdir %s\n' "$*" >>"$MARKLOOK_DEVID_TEST_MUTATIONS"
+    return 97
+  fi
+  command mkdir "$@"
+}
+SPY
+
+run_output_packager() {
+  local mode="$1"
+  shift
+  env -u MARKLOOK_DEVID_DIST_DIR \
+    BASH_ENV="$fixture_root/output-spy.bash" \
+    MARKLOOK_DEVID_TEST_PACKAGER="$output_packager" \
+    MARKLOOK_DEVID_TEST_MUTATIONS="$mutation_log" \
+    MARKLOOK_DEVID_TEST_LOG="$stub_log" \
+    MARKLOOK_DEVID_DERIVED_DATA="$output_guard/derived" \
+    MARKLOOK_DEVID_XCODEGEN="$stub_bin/xcodegen" \
+    MARKLOOK_DEVID_XCODEBUILD="$stub_bin/xcodebuild" \
+    MARKLOOK_DEVID_CODESIGN="$stub_bin/codesign" \
+    MARKLOOK_DEVID_DITTO=/usr/bin/ditto \
+    MARKLOOK_DEVID_SHASUM=/usr/bin/shasum \
+    MARKLOOK_DEVID_XCRUN="$stub_bin/xcrun" \
+    MARKLOOK_DEVID_SPCTL="$stub_bin/spctl" \
+    MARKLOOK_DEVID_VALIDATE_RELEASE_CANDIDATE="$stub_bin/validate-release-candidate" \
+    MARKLOOK_DEVID_VALIDATE_ARTIFACT="$stub_bin/validate-artifact" \
+    DEVELOPER_ID_APPLICATION='Developer ID Application: Fixture Signer (TEAMTEST01)' \
+    "$@" "$output_packager" "$mode"
+}
+
+output_cases=0
+output_failures=0
+assert_output_denied() {
+  local label="$1" mode output status sentinel sentinel_changed
+  shift
+  for mode in --dry-run --developer-id; do
+    output="$fixture_root/output-$label-$mode.out"
+    : >"$mutation_log"
+    : >"$stub_log"
+    set +e
+    run_output_packager "$mode" "$@" >"$output" 2>&1
+    status="$?"
+    set -e
+    sentinel_changed=0
+    for sentinel in "${sentinels[@]}"; do
+      if [ ! -f "$sentinel" ] || [ "$(cat "$sentinel")" != keep ]; then sentinel_changed=1; fi
+    done
+    output_cases=$((output_cases + 1))
+    if [ "$status" -ne 1 ] || [ -s "$mutation_log" ] || [ -s "$stub_log" ] || \
+        [ "$sentinel_changed" -ne 0 ] || ! grep -q '^error: unsafe ' "$output"; then
+      echo "error: output admission $label $mode expected refusal before mutations/tools, got $status" >&2
+      cat "$output" "$mutation_log" "$stub_log" >&2
+      output_failures=$((output_failures + 1))
+    else
+      echo "output admission rejection: $label $mode (no mutations/tools, sentinels intact)"
+    fi
+  done
+}
+
+assert_output_denied empty MARKLOOK_DEVID_DIST_DIR=
+assert_output_denied filesystem-root MARKLOOK_DEVID_DIST_DIR=/
+assert_output_denied home MARKLOOK_DEVID_DIST_DIR="$HOME"
+assert_output_denied repository MARKLOOK_DEVID_DIST_DIR="$temporary_checkout"
+assert_output_denied ancestor MARKLOOK_DEVID_DIST_DIR="$fixture_root"
+assert_output_denied file MARKLOOK_DEVID_DIST_DIR="$output_guard/dist/sentinel"
+assert_output_denied system-temp-root MARKLOOK_DEVID_DIST_DIR="$(/usr/bin/getconf DARWIN_USER_TEMP_DIR)"
+assert_output_denied private-tmp-root MARKLOOK_DEVID_DIST_DIR=/private/tmp
+assert_output_denied poisoned-home TMPDIR="$HOME" MARKLOOK_DEVID_DIST_DIR="$HOME/Documents/new-developer-id-dist"
+assert_output_denied poisoned-repository TMPDIR="$temporary_checkout" MARKLOOK_DEVID_DIST_DIR="$temporary_checkout/Docs/new-dist"
+assert_output_denied missing-parent-escape MARKLOOK_DEVID_DIST_DIR="$output_guard/missing-parent-link/missing/dist"
+assert_output_denied linked-child-outside MARKLOOK_DEVID_DIST_DIR="$output_guard/linked-dist"
+assert_output_denied linked-child-inside MARKLOOK_DEVID_DIST_DIR="$output_guard/inside-dist"
+assert_output_denied output-contains-derived MARKLOOK_DEVID_DIST_DIR="$output_guard/dist" \
+  MARKLOOK_DEVID_DERIVED_DATA="$output_guard/dist/$output_stem/DerivedData"
+assert_output_denied derived-contains-output MARKLOOK_DEVID_DIST_DIR="$output_guard/dist" \
+  MARKLOOK_DEVID_DERIVED_DATA="$output_guard/dist"
+assert_output_denied equal-output-derived MARKLOOK_DEVID_DIST_DIR="$output_guard/dist" \
+  MARKLOOK_DEVID_DERIVED_DATA="$output_guard/dist/$output_stem"
+echo "output admission negatives: $output_cases cases, $output_failures failures"
+if [ "$output_failures" -ne 0 ]; then exit 1; fi
+
+resolved_output_guard="$(cd "$output_guard" && pwd -P)"
+resolved_checkout="$(cd "$temporary_checkout" && pwd -P)"
+output_positives=0
+assert_output_accepted() {
+  local label="$1" expected_dist="$2" mode output spy_file
+  shift 2
+  for mode in --dry-run --developer-id; do
+    output="$fixture_root/output-positive-$label-$mode.out"
+    : >"$mutation_log"
+    : >"$stub_log"
+    spy_file="$fixture_root/output-spy.bash"
+    if [ "$mode" = --developer-id ]; then spy_file=""; fi
+    assert_status 0 "$output" run_output_packager "$mode" BASH_ENV="$spy_file" LC_ALL=C "$@"
+    test ! -s "$mutation_log"
+    if [ "$mode" = --dry-run ]; then
+      grep -q '^DRY RUN: Developer ID package lane' "$output"
+      test ! -s "$stub_log"
+    else
+      grep -Fxq "Package directory: $expected_dist/$output_stem" "$output"
+      test -f "$expected_dist/$output_stem/$output_stem.zip"
+      test -f "$expected_dist/$output_stem/$output_stem.zip.sha256"
+      test -f "$expected_dist/$output_stem/MANIFEST.txt"
+      grep -Fq -- "-derivedDataPath $resolved_output_guard/derived" "$stub_log"
+      test "$(grep -c '^validate-release-candidate --ci$' "$stub_log")" -eq 1
+    fi
+    assert_no_fixture_identity_details "$output"
+    output_positives=$((output_positives + 1))
+    echo "output admission positive: $label $mode (caller LC_ALL=C)"
+  done
+}
+
+assert_output_accepted unset-default "$resolved_checkout/dist"
+assert_output_accepted absolute "$resolved_output_guard/absolute" MARKLOOK_DEVID_DIST_DIR="$output_guard/absolute"
+assert_output_accepted nested-missing "$resolved_output_guard/missing/deep/dist" \
+  MARKLOOK_DEVID_DIST_DIR="$output_guard/missing/deep/dist"
+assert_output_accepted relative "$resolved_checkout/dist/output-path-fixture" MARKLOOK_DEVID_DIST_DIR=dist/output-path-fixture
+unicode_dist="dist-$(printf '\344\270\255\346\226\207')"
+assert_output_accepted unicode "$resolved_output_guard/$unicode_dist" MARKLOOK_DEVID_DIST_DIR="$output_guard/$unicode_dist"
+ln -s "$output_guard/absolute" "$output_guard/allowed-dist-link"
+assert_output_accepted linked-dist "$resolved_output_guard/absolute" MARKLOOK_DEVID_DIST_DIR="$output_guard/allowed-dist-link"
+echo "output admission positives: $output_positives cases"
 
 echo "Developer ID release lane tests passed"

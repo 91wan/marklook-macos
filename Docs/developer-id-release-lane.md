@@ -75,11 +75,29 @@ The script intentionally redacts certificate subject details. Use Keychain Acces
 
 ## Dry run
 
-The dry run validates lane tooling and prints the commands that would be used. It does not sign or notarize anything and is safe for CI:
+The dry run validates lane tooling and output-path admission, then prints the
+commands that would be used. It reads checked-in version metadata and Git identity
+without creating or deleting output. It does not sign or notarize anything:
 
 ```bash
 Scripts/package-developer-id.sh --dry-run
 ```
+
+## Output-directory admission
+
+`MARKLOOK_DEVID_DIST_DIR` defaults to the repository's `dist` only when unset;
+an explicitly empty value is rejected. Both dist and its computed artifact child
+use the existing release path policy with fixed system Ruby/getconf and
+`LC_ALL=en_US.UTF-8`, independent of caller locale or `TMPDIR`. Allowed roots are
+repository `dist` and its descendants, or descendants of OS-owned temporary roots.
+Protected roots, files, and symlink-resolved escapes through missing parents are
+rejected. The artifact child must not be a symlink, must remain strictly beneath
+the admitted dist root, and must not overlap admitted DerivedData in either direction.
+
+Dry-run and real packaging share this admission before deletion, directory creation,
+or release-tool execution. All downstream artifact paths use admitted coordinates.
+Real packaging still requires a clean Git worktree and preserves the nested RC's
+clean environment. This is static admission, not a concurrent-filesystem sandbox.
 
 ## Signed-only package
 
