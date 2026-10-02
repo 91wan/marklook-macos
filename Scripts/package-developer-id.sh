@@ -136,7 +136,37 @@ require_clean_worktree() {
 
 require_lane_tools
 derived_data_input="${MARKLOOK_DEVID_DERIVED_DATA:-.build/DeveloperIDDerivedData}"
-derived_data="$(canonicalize_disposable_derived_data "$derived_data_input" "$repo_root" "$ruby_cmd" "$getconf_cmd")"
+derived_data="$(LC_ALL=en_US.UTF-8 canonicalize_disposable_derived_data "$derived_data_input" "$repo_root" "$ruby_cmd" "$getconf_cmd")"
+
+if [ "$dry_run" -eq 0 ]; then
+  require_clean_worktree
+fi
+
+# Admit both directories before either mode can proceed to release effects.
+version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' MarkLookApp/Info.plist)"
+build_number="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' MarkLookApp/Info.plist)"
+short_sha="$(/usr/bin/git rev-parse --short HEAD)"
+commit_sha="$(/usr/bin/git rev-parse HEAD)"
+artifact_stem="MarkLook-${version}-developer-id-${short_sha}"
+dist_root="$(LC_ALL=en_US.UTF-8 canonicalize_release_path dist MARKLOOK_DEVID_DIST_DIR \
+  "${MARKLOOK_DEVID_DIST_DIR-$repo_root/dist}" "$repo_root" "$ruby_cmd" "$getconf_cmd")"
+output_input="$dist_root/$artifact_stem"
+output_dir="$(LC_ALL=en_US.UTF-8 canonicalize_release_path dist developer-id-artifact-directory \
+  "$output_input" "$repo_root" "$ruby_cmd" "$getconf_cmd")"
+if [ -L "$output_input" ]; then
+  echo 'error: unsafe developer-id-artifact-directory: linked artifact directory' >&2
+  exit 1
+fi
+case "$output_dir" in
+  "$dist_root"/*) ;;
+  *) echo 'error: unsafe developer-id-artifact-directory: outside admitted dist' >&2; exit 1 ;;
+esac
+LC_ALL=en_US.UTF-8 require_disjoint_release_paths "$output_dir" "$derived_data"
+package_app="$output_dir/MarkLook.app"
+zip_name="$artifact_stem.zip"
+zip_path="$output_dir/$zip_name"
+sha_path="$zip_path.sha256"
+manifest_path="$output_dir/MANIFEST.txt"
 
 if [ "$dry_run" -eq 1 ]; then
   echo "DRY RUN: Developer ID package lane"
@@ -149,8 +179,6 @@ if [ "$dry_run" -eq 1 ]; then
   echo "No signing or notarization attempted."
   exit 0
 fi
-
-require_clean_worktree
 
 if [ -z "${HOME:-}" ] || [ -z "${USER:-}" ]; then
   echo "error: nested RC environment requires HOME and USER" >&2
@@ -167,19 +195,6 @@ rc_environment=(
   "USER=$USER"
   "TMPDIR=$rc_tmpdir"
 )
-
-version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' MarkLookApp/Info.plist)"
-build_number="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' MarkLookApp/Info.plist)"
-short_sha="$(/usr/bin/git rev-parse --short HEAD)"
-commit_sha="$(/usr/bin/git rev-parse HEAD)"
-artifact_stem="MarkLook-${version}-developer-id-${short_sha}"
-dist_root="${MARKLOOK_DEVID_DIST_DIR:-$repo_root/dist}"
-output_dir="$dist_root/$artifact_stem"
-package_app="$output_dir/MarkLook.app"
-zip_name="$artifact_stem.zip"
-zip_path="$output_dir/$zip_name"
-sha_path="$zip_path.sha256"
-manifest_path="$output_dir/MANIFEST.txt"
 
 rm -rf "$output_dir" "$derived_data"
 mkdir -p "$output_dir"
