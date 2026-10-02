@@ -14,6 +14,40 @@ The Developer ID lane may be used for a public binary only when all of these are
 
 Apple Development signing and unsigned CI packages do not satisfy this lane.
 
+## Artifact signing closure
+
+Validation is fail-closed for the entire app, including apps extracted from ZIPs.
+The only native code paths are `Contents/MacOS/MarkLook` and the corresponding
+`Contents/MacOS/MarkLookPreview` and `Contents/MacOS/MarkLookThumbnail` executables
+inside the two expected Quick Look extensions. Their `CFBundleExecutable` values
+must match. Symlinks, nonregular/unreadable entries, malformed or missing expected
+executables, additional Mach-O files (regardless of name or executable mode),
+executable helpers/scripts, additional code bundles, and ZIP siblings are rejected
+before signature, stapler or assessment hooks. This does not precede ZIP extraction
+or the packager's Xcode signing operation. There is no `._*` filename exemption:
+legitimate ditto AppleDouble metadata must merge during extraction, not survive as
+an unexamined file.
+
+Each expected executable's architectures come from fixed `/usr/bin/lipo -archs`;
+failed, empty, malformed or duplicate architecture results are rejected. Thin and
+universal artifacts are both supported. Recursive strict verification covers all
+architectures, and explicit signature details and exact entitlements are checked
+for every present architecture. Each slice's first Authority must be its one valid
+Developer ID Application leaf. It must have one valid TeamIdentifier, with the leaf's team matching that
+identifier. The complete leaf Authority and TeamIdentifier must be identical across
+all three executables and every slice; ordinary intermediate/root Authorities are
+allowed. Timestamp, hardened runtime and the existing exact entitlement sets are
+required per slice. Identity errors do not print identity values, and signature
+query failures retain their nonzero exit status. Notarized hooks run only after
+all structural and signing checks succeed. This intentionally rejects artifacts
+that the earlier native-display/independent-identity checks could accept.
+
+`Tests/Scripts/developer-id-release-lane-test.sh` always runs its complete default
+fixture inventory. Optional `--real-artifacts path/to/MarkLook.app path/to/package.zip`
+also exercises production inventory and real built-bundle checks on retained
+Release outputs with synthetic signature/notarization stubs. This proves inventory
+and consumer integration, not real Developer ID signing or public trust.
+
 ## Non-goals
 
 - This lane does not create a Git tag.

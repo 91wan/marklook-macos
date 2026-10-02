@@ -7,6 +7,19 @@ doctor="$repo_root/Scripts/doctor-release-identity.sh"
 packager="$repo_root/Scripts/package-developer-id.sh"
 validator="$repo_root/Scripts/validate-developer-id-artifact.sh"
 
+real_app=""
+real_zip=""
+if [ "$#" -ne 0 ]; then
+  if [ "$#" -ne 3 ] || [ "$1" != --real-artifacts ]; then
+    echo "usage: developer-id-release-lane-test.sh [--real-artifacts MarkLook.app package.zip]" >&2
+    exit 64
+  fi
+  real_app="$2"
+  real_zip="$3"
+  test -d "$real_app"
+  test -f "$real_zip"
+fi
+
 fixture_root="$(mktemp -d)"
 trap 'rm -rf "$fixture_root"' EXIT
 
@@ -23,11 +36,16 @@ assert_status() {
     cat "$output_file" >&2
     exit 1
   fi
+  if [ "$expected_status" -ne 0 ] && grep -q '^Developer ID artifact OK:' "$output_file"; then
+    echo "error: failed validation printed success" >&2
+    cat "$output_file" >&2
+    exit 1
+  fi
 }
 
 assert_no_fixture_identity_details() {
   local output_file="$1"
-  if grep -Eq 'TEAMTEST01|Example Developer|Local Validation' "$output_file"; then
+  if grep -Eq 'TEAMTEST01|TEAMID1234|Fixture Signer|Other Signer|Example Developer|Local Validation' "$output_file"; then
     echo "error: release lane output leaked synthetic identity details" >&2
     cat "$output_file" >&2
     exit 1
@@ -85,47 +103,47 @@ cat >"$stub_bin/codesign" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
 printf 'codesign %s\n' "$*" >>"$MARKLOOK_DEVID_TEST_LOG"
+target="${!#}"
+case "$(basename "$target")" in
+  MarkLook.app) key=app ;;
+  MarkLookPreview.appex) key=preview ;;
+  MarkLookThumbnail.appex) key=thumbnail ;;
+  *) echo "unexpected signature target" >&2; exit 2 ;;
+esac
+architecture=default
+previous=""
+for argument in "$@"; do
+  if [ "$previous" = --architecture ]; then architecture="$argument"; fi
+  previous="$argument"
+done
 case "${1:-}" in
   --verify)
+    if [ -f "$MARKLOOK_DEVID_DETAILS_DIR/$key.verify.status" ]; then
+      exit "$(cat "$MARKLOOK_DEVID_DETAILS_DIR/$key.verify.status")"
+    fi
     exit 0
     ;;
   -dv)
-    target="${!#}"
-    case "$(basename "$target")" in
-      MarkLook.app)
-        cat "$MARKLOOK_DEVID_DETAILS_DIR/app.txt" >&2
-        ;;
-      MarkLookPreview.appex)
-        cat "$MARKLOOK_DEVID_DETAILS_DIR/preview.txt" >&2
-        ;;
-      MarkLookThumbnail.appex)
-        cat "$MARKLOOK_DEVID_DETAILS_DIR/thumbnail.txt" >&2
-        ;;
-      *)
-        echo "unexpected details target: $target" >&2
-        exit 2
-        ;;
-    esac
+    if [ -f "$MARKLOOK_DEVID_DETAILS_DIR/$key.$architecture.status" ]; then
+      exit "$(cat "$MARKLOOK_DEVID_DETAILS_DIR/$key.$architecture.status")"
+    fi
+    details="$MARKLOOK_DEVID_DETAILS_DIR/$key.txt"
+    if [ -f "$MARKLOOK_DEVID_DETAILS_DIR/$key.$architecture.txt" ]; then
+      details="$MARKLOOK_DEVID_DETAILS_DIR/$key.$architecture.txt"
+    fi
+    cat "$details" >&2
     exit 0
     ;;
   -d)
     if [ "${2:-}" = "--entitlements" ] && [ "${3:-}" = ":-" ]; then
-      target="${!#}"
-      case "$(basename "$target")" in
-        MarkLook.app)
-          cat "$MARKLOOK_DEVID_ENTITLEMENTS_DIR/app.plist"
-          ;;
-        MarkLookPreview.appex)
-          cat "$MARKLOOK_DEVID_ENTITLEMENTS_DIR/preview.plist"
-          ;;
-        MarkLookThumbnail.appex)
-          cat "$MARKLOOK_DEVID_ENTITLEMENTS_DIR/thumbnail.plist"
-          ;;
-        *)
-          echo "unexpected entitlement target: $target" >&2
-          exit 2
-          ;;
-      esac
+      if [ -f "$MARKLOOK_DEVID_ENTITLEMENTS_DIR/$key.$architecture.status" ]; then
+        exit "$(cat "$MARKLOOK_DEVID_ENTITLEMENTS_DIR/$key.$architecture.status")"
+      fi
+      entitlements="$MARKLOOK_DEVID_ENTITLEMENTS_DIR/$key.plist"
+      if [ -f "$MARKLOOK_DEVID_ENTITLEMENTS_DIR/$key.$architecture.plist" ]; then
+        entitlements="$MARKLOOK_DEVID_ENTITLEMENTS_DIR/$key.$architecture.plist"
+      fi
+      cat "$entitlements"
       exit 0
     fi
     ;;
@@ -242,9 +260,32 @@ grep -q 'artifact not found' "$fixture_root/validator-missing-artifact.out"
 assert_no_fixture_identity_details "$fixture_root/validator-missing-artifact.out"
 
 artifact_app="$fixture_root/artifact/MarkLook.app"
-mkdir -p \
-  "$artifact_app/Contents/PlugIns/MarkLookPreview.appex" \
-  "$artifact_app/Contents/PlugIns/MarkLookThumbnail.appex"
+for architecture in arm64 x86_64; do
+  printf 'int main(void) { return 0; }\n' | /usr/bin/xcrun clang \
+    -arch "$architecture" -x c - -o "$fixture_root/$architecture"
+done
+/usr/bin/lipo -create "$fixture_root/arm64" "$fixture_root/x86_64" -output "$fixture_root/universal"
+native_arch="$(/usr/bin/uname -m)"
+other_arch=arm64
+if [ "$native_arch" = arm64 ]; then other_arch=x86_64; fi
+/usr/bin/lipo "$fixture_root/universal" -thin "$native_arch" -output "$fixture_root/thin"
+
+restore_artifact() {
+  local binary="${1:-$fixture_root/universal}" bundle executable
+  rm -rf "$artifact_app"
+  for executable in MarkLook MarkLookPreview MarkLookThumbnail; do
+    bundle="$artifact_app"
+    if [ "$executable" != MarkLook ]; then bundle="$artifact_app/Contents/PlugIns/$executable.appex"; fi
+    mkdir -p "$bundle/Contents/MacOS"
+    cp "$binary" "$bundle/Contents/MacOS/$executable"
+    chmod 755 "$bundle/Contents/MacOS/$executable"
+    cat >"$bundle/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0"><dict><key>CFBundleExecutable</key><string>$executable</string></dict></plist>
+PLIST
+  done
+}
+restore_artifact
 entitlements_dir="$fixture_root/entitlements"
 mkdir -p "$entitlements_dir"
 details_dir="$fixture_root/details"
@@ -291,6 +332,8 @@ write_valid_codesign_details() {
   local path="$1"
   cat >"$path" <<'DETAILS'
 Authority=Developer ID Application: Fixture Signer (TEAMID1234)
+Authority=Developer ID Certification Authority
+Authority=Apple Root CA
 TeamIdentifier=TEAMID1234
 Timestamp=Jul 24, 2026 at 12:00:00
 flags=0x10000(runtime)
@@ -314,10 +357,13 @@ run_validator() {
     MARKLOOK_DEVID_ENTITLEMENTS_DIR="$entitlements_dir" \
     MARKLOOK_DEVID_DETAILS_DIR="$details_dir" \
     MARKLOOK_DEVID_CODESIGN="$stub_bin/codesign" \
-    MARKLOOK_DEVID_VALIDATE_BUILT_BUNDLE="$stub_bin/validate-built-bundle" \
-    MARKLOOK_DEVID_VALIDATE_PREVIEW_CONTRACT="$stub_bin/validate-preview-contract" \
-    MARKLOOK_DEVID_VALIDATE_THUMBNAIL_BOUNDARIES="$stub_bin/validate-thumbnail-boundaries" \
-    "$validator" --signed-only "$artifact_app"
+    MARKLOOK_DEVID_DITTO=/usr/bin/ditto \
+    MARKLOOK_DEVID_XCRUN="$stub_bin/xcrun" \
+    MARKLOOK_DEVID_SPCTL="$stub_bin/spctl" \
+    MARKLOOK_DEVID_VALIDATE_BUILT_BUNDLE="${built_bundle_check:-$stub_bin/validate-built-bundle}" \
+    MARKLOOK_DEVID_VALIDATE_PREVIEW_CONTRACT="${preview_contract_check:-$stub_bin/validate-preview-contract}" \
+    MARKLOOK_DEVID_VALIDATE_THUMBNAIL_BOUNDARIES="${thumbnail_boundaries_check:-$stub_bin/validate-thumbnail-boundaries}" \
+    "$validator" "${1:---signed-only}" "${2:-$artifact_app}"
 }
 
 restore_entitlements
@@ -325,6 +371,174 @@ restore_codesign_details
 : >"$stub_log"
 assert_status 0 "$fixture_root/validator-valid.out" run_validator
 grep -q '^Developer ID artifact OK:' "$fixture_root/validator-valid.out"
+
+# Aggregate new causal negatives so the unchanged parent exposes both families.
+closure_cases=0
+closure_failures=0
+assert_closure_rejected() {
+  local name="$1" stage="$2" expected="${3:-1}" artifact="${4:-$artifact_app}" status output
+  output="$fixture_root/closure-$name.out"
+  : >"$stub_log"
+  set +e
+  run_validator --notarized "$artifact" >"$output" 2>&1
+  status="$?"
+  set -e
+  closure_cases=$((closure_cases + 1))
+  if [ "$status" -ne "$expected" ] || grep -q '^Developer ID artifact OK:' "$output" || \
+      grep -Eq '^(xcrun|spctl) ' "$stub_log" || \
+      { [ "$stage" = structural ] && grep -q '^codesign ' "$stub_log"; } || \
+      grep -Eq 'TEAMID1234|TEAMTEST01|Fixture Signer|Other Signer' "$output"; then
+    echo "error: closure $name expected $expected before $stage hooks, got $status" >&2
+    cat "$output" "$stub_log" >&2
+    closure_failures=$((closure_failures + 1))
+  else
+    echo "closure rejection: $name (exit $status, $stage ordering)"
+  fi
+}
+
+for key in preview thumbnail; do
+  restore_codesign_details
+  sed 's/TEAMID1234/TEAMTEST01/g' "$details_dir/$key.txt" >"$details_dir/$key.tmp"
+  mv "$details_dir/$key.tmp" "$details_dir/$key.txt"
+  assert_closure_rejected "$key-other-team" identity
+  restore_codesign_details
+  sed 's/Fixture Signer/Other Signer/' "$details_dir/$key.txt" >"$details_dir/$key.tmp"
+  mv "$details_dir/$key.tmp" "$details_dir/$key.txt"
+  assert_closure_rejected "$key-same-team-other-leaf" identity
+done
+restore_codesign_details
+for defect in duplicate-team duplicate-leaf leaf-team-mismatch; do
+  restore_codesign_details
+  case "$defect" in
+    duplicate-team) printf 'TeamIdentifier=TEAMID1234\n' >>"$details_dir/app.txt" ;;
+    duplicate-leaf) printf 'Authority=Developer ID Application: Fixture Signer (TEAMID1234)\n' >>"$details_dir/app.txt" ;;
+    leaf-team-mismatch)
+      sed 's/(TEAMID1234)/(TEAMTEST01)/' "$details_dir/app.txt" >"$details_dir/app.tmp"
+      mv "$details_dir/app.tmp" "$details_dir/app.txt"
+      ;;
+  esac
+  assert_closure_rejected "$defect" identity
+done
+restore_codesign_details
+
+for key in app preview thumbnail; do
+  for defect in team leaf misplaced-authority timestamp runtime entitlements details-status entitlement-status; do
+    write_valid_codesign_details "$details_dir/$key.$other_arch.txt"
+    case "$defect" in
+      team) sed 's/TEAMID1234/TEAMTEST01/g' "$details_dir/$key.$other_arch.txt" >"$details_dir/modified" ;;
+      leaf) sed 's/Fixture Signer/Other Signer/' "$details_dir/$key.$other_arch.txt" >"$details_dir/modified" ;;
+      misplaced-authority)
+        printf 'Authority=Apple Development: Other Signer (TEAMID1234)\n' >"$details_dir/modified"
+        cat "$details_dir/$key.$other_arch.txt" >>"$details_dir/modified"
+        ;;
+      timestamp) grep -v '^Timestamp=' "$details_dir/$key.$other_arch.txt" >"$details_dir/modified" ;;
+      runtime) grep -v '^flags=' "$details_dir/$key.$other_arch.txt" >"$details_dir/modified" ;;
+      entitlements) write_empty_entitlements "$entitlements_dir/$key.$other_arch.plist" ;;
+      details-status) printf '73\n' >"$details_dir/$key.$other_arch.status" ;;
+      entitlement-status) printf '74\n' >"$entitlements_dir/$key.$other_arch.status" ;;
+    esac
+    if [ -f "$details_dir/modified" ]; then mv "$details_dir/modified" "$details_dir/$key.$other_arch.txt"; fi
+    expected=1
+    if [ "$defect" = details-status ]; then expected=73; fi
+    if [ "$defect" = entitlement-status ]; then expected=74; fi
+    assert_closure_rejected "$key-$other_arch-$defect" identity "$expected"
+    rm -f "$details_dir/$key.$other_arch.txt" "$details_dir/$key.$other_arch.status" \
+      "$entitlements_dir/$key.$other_arch.plist" "$entitlements_dir/$key.$other_arch.status"
+  done
+  printf '75\n' >"$details_dir/$key.verify.status"
+  assert_closure_rejected "$key-verify-status" identity 75
+  rm "$details_dir/$key.verify.status"
+done
+
+for defect in missing renamed malformed plist-name plist-invalid unreadable symlink fifo \
+  extra-native resource-native dot-native script app appex xpc framework loginbundle; do
+  restore_artifact
+  executable="$artifact_app/Contents/MacOS/MarkLook"
+  case "$defect" in
+    missing) rm "$executable" ;;
+    renamed) mv "$executable" "$executable-renamed" ;;
+    malformed) printf '\317\372\355\376broken' >"$executable" ;;
+    plist-name) /usr/libexec/PlistBuddy -c 'Set :CFBundleExecutable Wrong' "$artifact_app/Contents/Info.plist" ;;
+    plist-invalid) printf 'not a plist\n' >"$artifact_app/Contents/Info.plist" ;;
+    unreadable) chmod 000 "$artifact_app/Contents/Info.plist" ;;
+    symlink) ln -s "$fixture_root/thin" "$artifact_app/Contents/linked" ;;
+    fifo) mkfifo "$artifact_app/Contents/pipe" ;;
+    extra-native) cp "$fixture_root/thin" "$artifact_app/Contents/extra" ;;
+    resource-native|dot-native)
+      mkdir -p "$artifact_app/Contents/Resources"
+      name=extra.dat
+      if [ "$defect" = dot-native ]; then name=._extra.dat; fi
+      cp "$fixture_root/thin" "$artifact_app/Contents/Resources/$name"
+      chmod 644 "$artifact_app/Contents/Resources/$name"
+      ;;
+    script) printf '#!/bin/sh\nexit 0\n' >"$artifact_app/Contents/helper"; chmod 755 "$artifact_app/Contents/helper" ;;
+    app|appex|xpc|framework|loginbundle) mkdir "$artifact_app/Contents/Extra.$defect" ;;
+  esac
+  assert_closure_rejected "$defect" structural
+done
+restore_artifact
+for defect in empty-architectures malformed-architectures duplicate-architectures; do
+  ruby - "$fixture_root/thin" "$artifact_app/Contents/MacOS/MarkLook" "$defect" <<'RUBY'
+source, output, defect = ARGV
+bytes = File.binread(source)
+case defect
+when 'empty-architectures'
+  bytes = [0xcafebabe, 0].pack('N2')
+when 'malformed-architectures'
+  bytes[4, 4] = [0x12345678].pack('V')
+when 'duplicate-architectures'
+  cpu, subtype = bytes[4, 8].unpack('V2')
+  first = 4096
+  second = ((first + bytes.bytesize + 4095) / 4096) * 4096
+  header = [0xcafebabe, 2, cpu, subtype, first, bytes.bytesize, 12,
+            cpu, subtype, second, bytes.bytesize, 12].pack('N*')
+  bytes = header.ljust(first, "\0") + bytes + "\0" * (second - first - bytes.bytesize) + bytes
+end
+File.binwrite(output, bytes)
+RUBY
+  assert_closure_rejected "$defect" structural
+  restore_artifact
+done
+mkdir -p "$fixture_root/zip-siblings"
+/usr/bin/ditto "$artifact_app" "$fixture_root/zip-siblings/MarkLook.app"
+printf 'sibling\n' >"$fixture_root/zip-siblings/extra.txt"
+/usr/bin/ditto -c -k "$fixture_root/zip-siblings" "$fixture_root/siblings.zip"
+assert_closure_rejected zip-siblings structural 1 "$fixture_root/siblings.zip"
+
+echo "closure negatives: $closure_cases cases, $closure_failures failures"
+if [ "$closure_failures" -ne 0 ]; then exit 1; fi
+
+for binary in "$fixture_root/thin" "$fixture_root/universal"; do
+  restore_artifact "$binary"
+  : >"$stub_log"
+  assert_status 0 "$fixture_root/validator-positive.out" run_validator --notarized
+  architectures="$(/usr/bin/lipo -archs "$binary")"
+  for architecture in $architectures; do
+    test "$(grep -c "^codesign -dv .*--architecture $architecture " "$stub_log")" -eq 3
+    test "$(grep -c "^codesign -d .*--architecture $architecture " "$stub_log")" -eq 3
+  done
+  test "$(grep -c '^codesign --verify --deep --strict' "$stub_log")" -eq 3
+  test "$(grep -c '^xcrun stapler validate' "$stub_log")" -eq 1
+  test "$(grep -c '^spctl --assess' "$stub_log")" -eq 1
+done
+restore_artifact
+
+if [ -n "$real_app" ]; then
+  built_bundle_check="$repo_root/Scripts/validate-built-bundle.sh"
+  preview_contract_check="$repo_root/Scripts/validate-quicklook-preview-contract.sh"
+  thumbnail_boundaries_check="$repo_root/Scripts/validate-thumbnail-boundaries.sh"
+  for artifact in "$real_app" "$real_zip"; do
+    assert_status 0 "$fixture_root/validator-real.out" run_validator --notarized "$artifact"
+    grep -q '^Developer ID artifact OK:' "$fixture_root/validator-real.out"
+    assert_no_fixture_identity_details "$fixture_root/validator-real.out"
+    echo "real Release inventory accepted with synthetic signatures: $(basename "$artifact")"
+  done
+  assert_status 1 "$fixture_root/validator-real-unsigned.out" \
+    env MARKLOOK_DEVID_CODESIGN=/usr/bin/codesign "$validator" --signed-only "$real_app"
+  assert_no_fixture_identity_details "$fixture_root/validator-real-unsigned.out"
+  echo "real unsigned Release artifact refused by real codesign"
+  unset built_bundle_check preview_contract_check thumbnail_boundaries_check
+fi
 
 remove_secure_timestamp "$details_dir/app.txt"
 assert_status 1 "$fixture_root/validator-app-timestamp.out" run_validator
@@ -491,6 +705,15 @@ if [ -s "$stub_log" ]; then
   exit 1
 fi
 
+# Keep the packaging positive independent of the construction worktree's dirtiness.
+mkdir -p "$temporary_checkout/MarkLookApp"
+cp "$repo_root/MarkLookApp/Info.plist" "$temporary_checkout/MarkLookApp/Info.plist"
+/usr/bin/git -C "$temporary_checkout" init -q
+/usr/bin/git -C "$temporary_checkout" add .
+/usr/bin/git -C "$temporary_checkout" -c core.hooksPath=/dev/null \
+  -c user.name='MarkLook Tests' -c user.email='tests@example.invalid' \
+  commit -q -m 'packaging fixture'
+
 : >"$stub_log"
 absolute_derived_data="$fixture_root/absolute-derived-data"
 resolved_absolute_derived_data="$(ruby -e 'puts File.join(File.realpath(File.dirname(ARGV.fetch(0))), File.basename(ARGV.fetch(0)))' "$absolute_derived_data")"
@@ -521,7 +744,7 @@ MARKLOOK_DEVID_SPCTL="$stub_bin/spctl" \
 MARKLOOK_DEVID_VALIDATE_RELEASE_CANDIDATE="$stub_bin/validate-release-candidate" \
 MARKLOOK_DEVID_VALIDATE_ARTIFACT="$stub_bin/validate-artifact" \
 DEVELOPER_ID_APPLICATION='Developer ID Application: Fixture Signer (TEAMTEST01)' \
-  "$packager" --developer-id
+  "$temporary_checkout/Scripts/package-developer-id.sh" --developer-id
 
 grep -Fq "xcodebuild -project MarkLook.xcodeproj -scheme MarkLook -configuration Release -derivedDataPath $resolved_absolute_derived_data" "$stub_log"
 grep -q 'OTHER_CODE_SIGN_FLAGS=--timestamp' "$stub_log"
